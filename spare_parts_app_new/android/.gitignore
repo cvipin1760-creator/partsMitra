@@ -1,0 +1,55 @@
+# ===============================
+# System
+# ===============================
+.DS_Store
+Thumbs.db
+*.log
+
+# ===============================
+# Flutter
+# ===============================
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+
+# ===============================
+# Android
+# ===============================
+android/.gradle/
+android/build/
+android/app/build/
+local.properties
+captures/
+.cxx/
+
+# APK / Bundle
+*.apk
+*.aab
+
+# ===============================
+# iOS
+# ===============================
+ios/Pods/
+
+# ===============================
+# Java / Maven (Spring Boot)
+# ===============================
+target/
+*.class
+
+# ===============================
+# Node / React
+# ===============================
+node_modules/
+dist/
+
+# ===============================
+# Secrets / Keys
+# ===============================
+key.properties
+*.keystore
+*.jks

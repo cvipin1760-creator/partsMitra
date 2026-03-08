@@ -1,0 +1,35 @@
+name: Deploy Flutter Web to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'spare_parts_app_new/**'
+      - '!**/*.md'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spare_parts_app_new
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          cache: true
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Build web
+        run: flutter build web --release --dart-define=BASE_URL=${{ secrets.FLUTTER_WEB_BASE_URL }}
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: spare_parts_app_new/build/web
+          publish_branch: gh-pages
+          force_orphan: true

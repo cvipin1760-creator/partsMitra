@@ -1,0 +1,42 @@
+# Root
+.DS_Store
+Thumbs.db
+.env
+.env.*
+.idea/
+.vscode/
+
+# Flutter SDK (local copy)
+flutter/
+
+# Node / Vite
+frontend-web/node_modules/
+frontend-web/dist/
+frontend-web/.env.local
+
+# Java / Spring
+spares-hub-server/target/
+spares-hub-server/.project
+spares-hub-server/.classpath
+spares-hub-server/.settings/
+
+# Flutter app build outputs and local configs
+spare_parts_app/build/
+spare_parts_app/.dart_tool/
+spare_parts_app/.flutter-plugins
+spare_parts_app/.flutter-plugins-dependencies
+spare_parts_app/.packages
+spare_parts_app/.metadata
+spare_parts_app/ios/Flutter/Flutter.podspec
+spare_parts_app/ios/Flutter/Generated.xcconfig
+spare_parts_app/ios/Pods/
+spare_parts_app/ios/Podfile.lock
+spare_parts_app/android/.gradle/
+spare_parts_app/android/build/
+spare_parts_app/android/local.properties
+spare_parts_app/android/key.properties
+spare_parts_app/web/.dart_tool/
+
+# Logs
+**/*.log
+

@@ -1,0 +1,6 @@
+export const ROLE_RETAILER = 'ROLE_RETAILER';
+export const ROLE_MECHANIC = 'ROLE_MECHANIC';
+export const ROLE_WHOLESALER = 'ROLE_WHOLESALER';
+export const ROLE_ADMIN = 'ROLE_ADMIN';
+export const ROLE_STAFF = 'ROLE_STAFF';
+export const ROLE_SUPER_MANAGER = 'ROLE_SUPER_MANAGER';

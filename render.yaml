@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: inventory-system
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+    autoDeploy: true
