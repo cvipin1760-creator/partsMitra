@@ -142,6 +142,24 @@ public class AIService {
                 if (error != null) return "AI service error: " + error.toString();
                 return "I couldn't generate a response.";
             }
+            if ("local".equals(p) || ((openaiApiKey == null || openaiApiKey.isEmpty()) && (geminiApiKey == null || geminiApiKey.isEmpty()))) {
+                String q = prompt == null ? "" : prompt.trim();
+                if (q.isEmpty()) return "Please describe the part or question.";
+                List<String> tokens = List.of(q.split("\\W+"));
+                List<Product> found = tokens.stream()
+                        .filter(t -> t.length() > 1)
+                        .flatMap(t -> productRepository.findByNameContainingIgnoreCaseOrPartNumberContainingIgnoreCase(t, t).stream())
+                        .distinct()
+                        .limit(10)
+                        .toList();
+                if (!found.isEmpty()) {
+                    String suggestions = found.stream()
+                            .map(p2 -> p2.getName() + " (" + p2.getPartNumber() + ")")
+                            .collect(Collectors.joining(", "));
+                    return "Suggestions: " + suggestions;
+                }
+                return "I couldn't find matching products. Try specifying the part name or number.";
+            }
             return "AI integration is not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY.";
         } catch (Exception e) {
             return "AI service error: " + e.getMessage();

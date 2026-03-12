@@ -55,8 +55,11 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
     _scrollToBottom();
 
     try {
-      final res = await _remoteClient.postJson('/ai/chat', {'prompt': text},
-          headers: {'X-AI-Provider': 'gemini'});
+      final res = await _remoteClient.postJson(
+        '/ai/chat',
+        {'prompt': text},
+        headers: {'X-AI-Provider': 'local'},
+      );
       setState(() {
         _messages.add({'text': res['response'], 'isBot': true});
       });
