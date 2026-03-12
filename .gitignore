@@ -16,6 +16,9 @@ frontend-web/.env.local
 
 # Java / Spring
 spares-hub-server/target/
+backend/target/
+**/target/
+backend/*.jar
 spares-hub-server/.project
 spares-hub-server/.classpath
 spares-hub-server/.settings/
