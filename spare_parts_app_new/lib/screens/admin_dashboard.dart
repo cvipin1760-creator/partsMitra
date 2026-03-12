@@ -1133,17 +1133,21 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
     final ok = await _productService.deleteProductsBulk(ids);
     if (ok) {
       setState(() {
+        _selectionMode = false;
+        _selectedIds.clear();
+      });
+      _fetchProducts();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Deleted ${ids.length} products')),
         );
       }
-        _selectionMode = false;
-        _selectedIds.clear();
-      });
-      _fetchProducts();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bulk delete failed')),
+      );
+    }
+  }
 
   void _showAddProductDialog({Product? product}) {
     final nameController = TextEditingController(text: product?.name);

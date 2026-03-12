@@ -17,9 +17,10 @@ public class AIController {
 
     @PostMapping("/chat")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, String>> chat(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, String>> chat(@RequestBody Map<String, String> request,
+                                                    @RequestHeader(value = "X-AI-Provider", required = false) String provider) {
         String prompt = request.get("prompt");
-        String response = aiService.askAI(prompt);
+        String response = aiService.askAI(prompt, provider);
         return ResponseEntity.ok(Map.of("response", response));
     }
 }
