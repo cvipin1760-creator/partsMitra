@@ -41,7 +41,7 @@ const AIChatbot: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await api.post('/ai/chat', { prompt: input });
+      const res = await api.post('/ai/chat', { prompt: input }, { headers: { 'X-AI-Provider': 'gemini' } });
       const botMessage = { text: res.data.response, isBot: true };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {

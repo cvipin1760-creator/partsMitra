@@ -55,7 +55,8 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
     _scrollToBottom();
 
     try {
-      final res = await _remoteClient.postJson('/ai/chat', {'prompt': text});
+      final res = await _remoteClient.postJson('/ai/chat', {'prompt': text},
+          headers: {'X-AI-Provider': 'gemini'});
       setState(() {
         _messages.add({'text': res['response'], 'isBot': true});
       });
@@ -120,7 +121,9 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
       setState(() {
         _messages
             .add({'text': res['response'] ?? 'No response', 'isBot': true});
-      final products = await _productService.searchProducts((res['response'] ?? '') as String);
+      });
+      final products = await _productService
+          .searchProducts((res['response'] ?? '') as String);
       setState(() {
         _matches = products;
       });
@@ -156,7 +159,9 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
       setState(() {
         _messages
             .add({'text': res['response'] ?? 'No response', 'isBot': true});
-      final products = await _productService.searchProducts((res['response'] ?? '') as String);
+      });
+      final products = await _productService
+          .searchProducts((res['response'] ?? '') as String);
       setState(() {
         _matches = products;
       });
@@ -314,7 +319,8 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
                     ),
                     if (_matches.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
                         color: const Color(0xFFF8FAFC),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,7 +338,8 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  border: Border.all(
+                                      color: const Color(0xFFE5E7EB)),
                                 ),
                                 child: Row(
                                   children: [
@@ -343,24 +350,35 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
                                         color: const Color(0xFFF1F5F9),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Icon(Icons.build, color: Colors.grey),
+                                      child: const Icon(Icons.build,
+                                          color: Colors.grey),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                          Text('Part: ${p.partNumber ?? 'N/A'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                          Text(p.name,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text('Part: ${p.partNumber ?? 'N/A'}',
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey)),
                                         ],
                                       ),
                                     ),
-                                    Text('₹${displayPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    Text('₹${displayPrice.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
                                     const SizedBox(width: 8),
                                     Builder(builder: (ctx) {
                                       return TextButton(
                                         onPressed: () {
-                                          final cart = Provider.of<CartProvider>(ctx, listen: false);
+                                          final cart =
+                                              Provider.of<CartProvider>(ctx,
+                                                  listen: false);
                                           cart.addItem(p, displayPrice);
                                         },
                                         child: const Text('ADD'),

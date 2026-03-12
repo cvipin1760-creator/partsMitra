@@ -52,8 +52,8 @@ public class AIService {
                     "Help users with part identification, maintenance advice, or finding items. " +
                     "Be professional, concise, and helpful.";
 
-            boolean useOpenAI = "openai".equalsIgnoreCase(provider) || (openaiApiKey != null && !openaiApiKey.isEmpty());
-            if (useOpenAI) {
+            String p = provider == null ? "" : provider.toLowerCase();
+            if ("openai".equals(p)) {
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
                 headers.setBearerAuth(openaiApiKey);
@@ -80,7 +80,37 @@ public class AIService {
                 return "I couldn't generate a response.";
             }
 
-            if (geminiApiKey != null && !geminiApiKey.isEmpty()) {
+            if ("gemini".equals(p) || p.isEmpty()) {
+                if (geminiApiKey == null || geminiApiKey.isEmpty()) {
+                    if (openaiApiKey != null && !openaiApiKey.isEmpty()) {
+                        // Fallback to OpenAI only if Gemini key missing and OpenAI available
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.APPLICATION_JSON);
+                        headers.setBearerAuth(openaiApiKey);
+
+                        Map<String, Object> req = new HashMap<>();
+                        req.put("model", openaiModel);
+                        List<Map<String, Object>> messages = List.of(
+                                Map.of("role", "system", "content", systemPrompt),
+                                Map.of("role", "user", "content", prompt)
+                        );
+                        req.put("messages", messages);
+
+                        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(req, headers);
+                        Map<String, Object> response = restTemplate.postForObject(OPENAI_CHAT_URL, entity, Map.class);
+                        if (response != null && response.containsKey("choices")) {
+                            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+                            if (!choices.isEmpty()) {
+                                Map<String, Object> first = choices.get(0);
+                                Map<String, Object> msg = (Map<String, Object>) first.get("message");
+                                Object content = msg != null ? msg.get("content") : null;
+                                if (content != null) return content.toString();
+                            }
+                        }
+                        return "I couldn't generate a response.";
+                    }
+                    return "AI integration is not configured. Please set GEMINI_API_KEY.";
+                }
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -112,7 +142,7 @@ public class AIService {
                 if (error != null) return "AI service error: " + error.toString();
                 return "I couldn't generate a response.";
             }
-            return "AI integration is not configured. Please set OPENAI_API_KEY or GEMINI_API_KEY.";
+            return "AI integration is not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY.";
         } catch (Exception e) {
             return "AI service error: " + e.getMessage();
         }

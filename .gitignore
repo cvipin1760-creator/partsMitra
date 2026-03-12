@@ -23,6 +23,18 @@ spares-hub-server/.project
 spares-hub-server/.classpath
 spares-hub-server/.settings/
 
+# Flutter app (new)
+spare_parts_app_new/build/
+spare_parts_app_new/.dart_tool/
+spare_parts_app_new/.packages
+spare_parts_app_new/.metadata
+spare_parts_app_new/ios/Pods/
+spare_parts_app_new/ios/Podfile.lock
+spare_parts_app_new/android/.gradle/
+spare_parts_app_new/android/build/
+spare_parts_app_new/android/local.properties
+spare_parts_app_new/android/key.properties
+
 # Flutter app build outputs and local configs
 spare_parts_app/build/
 spare_parts_app/.dart_tool/
