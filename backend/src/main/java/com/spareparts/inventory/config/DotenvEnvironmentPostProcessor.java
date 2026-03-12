@@ -15,26 +15,33 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         try {
-            Path p = Path.of(".env");
-            if (Files.exists(p)) {
-                Properties props = new Properties();
-                try (Stream<String> lines = Files.lines(p)) {
-                    lines.forEach(line -> {
-                        String trimmed = line.trim();
-                        if (trimmed.isEmpty() || trimmed.startsWith("#")) return;
-                        int idx = trimmed.indexOf('=');
-                        if (idx <= 0) return;
-                        String key = trimmed.substring(0, idx).trim();
-                        String value = trimmed.substring(idx + 1).trim();
-                        if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
-                            value = value.substring(1, value.length() - 1);
-                        }
-                        if (!key.isEmpty()) {
-                            props.setProperty(key, value);
-                        }
-                    });
+            Path[] candidates = new Path[] {
+                    Path.of(".env"),
+                    Path.of("../.env"),
+                    Path.of("../../.env")
+            };
+            for (Path p : candidates) {
+                if (Files.exists(p)) {
+                    Properties props = new Properties();
+                    try (Stream<String> lines = Files.lines(p)) {
+                        lines.forEach(line -> {
+                            String trimmed = line.trim();
+                            if (trimmed.isEmpty() || trimmed.startsWith("#")) return;
+                            int idx = trimmed.indexOf('=');
+                            if (idx <= 0) return;
+                            String key = trimmed.substring(0, idx).trim();
+                            String value = trimmed.substring(idx + 1).trim();
+                            if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+                                value = value.substring(1, value.length() - 1);
+                            }
+                            if (!key.isEmpty()) {
+                                props.setProperty(key, value);
+                            }
+                        });
+                    }
+                    environment.getPropertySources().addFirst(new PropertiesPropertySource("dotenv", props));
+                    break;
                 }
-                environment.getPropertySources().addFirst(new PropertiesPropertySource("dotenv", props));
             }
         } catch (Exception ignored) {
         }
