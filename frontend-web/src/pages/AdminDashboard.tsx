@@ -32,9 +32,11 @@ const AdminDashboard = () => {
     mechanicPrice: 0,
     stock: 0,
     wholesalerId: '',
-    imagePath: ''
+    imagePath: '',
+    categoryId: ''
   });
   const [uploading, setUploading] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const [showAddUser, setShowAddUser] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -49,10 +51,11 @@ const AdminDashboard = () => {
   const [productSelectionMode, setProductSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
 
-  useEffect(() => {
+  useEffect(() => { 
     fetchUsers();
     fetchOrders();
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const fetchUsers = async () => {
@@ -70,6 +73,15 @@ const AdminDashboard = () => {
     try {
       const res = await api.get(isSuperManager ? '/admin/orders' : '/admin/orders');
       setOrders(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await api.get('/categories');
+      setCategories(res.data || []);
     } catch (err) {
       console.error(err);
     }
@@ -161,10 +173,12 @@ const AdminDashboard = () => {
         ...newProduct,
         mrp: parseFloat(newProduct.mrp),
         sellingPrice: parseFloat(newProduct.sellingPrice),
-        stock: parseInt(newProduct.stock)
+        stock: parseInt(newProduct.stock),
+        wholesalerId: newProduct.wholesalerId ? parseInt(newProduct.wholesalerId as any) : undefined,
+        categoryId: newProduct.categoryId ? parseInt(newProduct.categoryId as any) : undefined
       });
       setShowAddProduct(false);
-      setNewProduct({ name: '', partNumber: '', mrp: '', sellingPrice: '', stock: '', imagePath: '' });
+      setNewProduct({ name: '', partNumber: '', mrp: '', sellingPrice: '', stock: '', imagePath: '', wholesalerId: '', categoryId: '' });
       fetchProducts();
     } catch (err) {
       console.error(err);
@@ -179,7 +193,8 @@ const AdminDashboard = () => {
         ...editingProduct,
         mrp: parseFloat(editingProduct.mrp),
         sellingPrice: parseFloat(editingProduct.sellingPrice),
-        stock: parseInt(editingProduct.stock)
+        stock: parseInt(editingProduct.stock),
+        categoryId: editingProduct.categoryId ? parseInt(editingProduct.categoryId as any) : undefined
       });
       setShowEditProduct(false);
       setEditingProduct(null);
@@ -796,6 +811,19 @@ const AdminDashboard = () => {
                 </div>
                 {newProduct.imagePath && <p className="text-xs text-green-600 mt-1">Image uploaded!</p>}
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Category</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  value={newProduct.categoryId}
+                  onChange={e => setNewProduct({ ...newProduct, categoryId: e.target.value })}
+                >
+                  <option value="">Select category</option>
+                  {categories.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex justify-end space-x-3 mt-6">
                 <button type="button" onClick={() => setShowAddProduct(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">Cancel</button>
                 <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 font-medium transition">Add Product</button>
@@ -871,6 +899,19 @@ const AdminDashboard = () => {
                   onChange={e => setEditingProduct({...editingProduct, imagePath: e.target.value})}
                   placeholder="https://example.com/image.jpg"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Category</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  value={editingProduct.categoryId || ''}
+                  onChange={e => setEditingProduct({ ...editingProduct, categoryId: e.target.value })}
+                >
+                  <option value="">Select category</option>
+                  {categories.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex justify-end space-x-3 mt-6">
                 <button type="button" onClick={() => { setShowEditProduct(false); setEditingProduct(null); }} className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">Cancel</button>

@@ -16,6 +16,8 @@ const Shop: React.FC = () => {
   const { addItem } = useCart();
   const currentUser = AuthService.getCurrentUser();
   const location = useLocation();
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const getImageUrl = (path: string) => {
     if (!path) return '';
@@ -28,13 +30,22 @@ const Shop: React.FC = () => {
   useEffect(() => {
     const run = async () => {
       try {
+        // load categories in parallel
+        try {
+          const cats = await api.get('/categories');
+          setCategories(cats.data || []);
+        } catch {}
         let res;
         const isWholesaler = currentUser?.roles?.includes(ROLE_WHOLESALER);
         
         if (isWholesaler) {
           res = await api.get('/products/wholesaler');
         } else {
-          res = await api.get('/products');
+          if (categoryId) {
+            res = await api.get('/products', { params: { categoryId }});
+          } else {
+            res = await api.get('/products');
+          }
         }
 
         const data = res.data || [];
@@ -56,12 +67,17 @@ const Shop: React.FC = () => {
       }
     };
     run();
-  }, [currentUser, t]);
+  }, [currentUser, t, categoryId]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const q = params.get('q') || '';
     if (q) setSearchTerm(q);
+    const cat = params.get('cat');
+    if (cat) {
+      const id = Number(cat);
+      if (!Number.isNaN(id)) setCategoryId(id);
+    }
   }, [location.search]);
 
   const getPriceForRole = (p: any) => {
@@ -90,7 +106,7 @@ const Shop: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
         <div>
           <h1 className="text-3xl font-black text-gray-900 mb-2">{t('shop.title')}</h1>
           <p className="text-gray-500 font-medium">Find high-quality spare parts for your business</p>
@@ -107,6 +123,26 @@ const Shop: React.FC = () => {
           />
         </div>
       </div>
+      {categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button
+            onClick={() => { setCategoryId(null); }}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border ${categoryId === null ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-200'}`}
+          >
+            All
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => { setCategoryId(c.id); }}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border ${categoryId === c.id ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-200'}`}
+              title={c.description || ''}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-700 font-medium">

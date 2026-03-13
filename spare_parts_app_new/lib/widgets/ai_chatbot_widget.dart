@@ -385,13 +385,31 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
                                           cart.addItem(p, displayPrice);
                                         },
                                         child: const Text('ADD'),
+                                    const SizedBox(width: 8),
+                                    TextButton(
+                                      onPressed: () async {
+                                        try {
+                                          final res = await _remoteClient.postJson(
+                                            '/ai/order',
+                                            {'productId': p.id, 'quantity': 1},
+                                          );
+                                          final msg = 'Order placed: #${res['orderId']} • ₹${res['total']}';
+                                          setState(() {
+                                            _messages.add({'text': msg, 'isBot': true});
+                                          });
+                                        } catch (e) {
+                                          setState(() {
+                                            _messages.add({'text': 'Failed to place order.', 'isBot': true});
+                                          });
+                                        }
+                                      },
+                                      child: const Text('ORDER'),
+                                    ),
                                       );
                                     }),
                                   ],
                                 ),
                               );
-                            }),
-                          ],
                         ),
                       ),
                     if (_isLoading)

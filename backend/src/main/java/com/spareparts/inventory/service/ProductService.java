@@ -3,9 +3,11 @@ package com.spareparts.inventory.service;
 
 import com.spareparts.inventory.dto.ProductDto;
 import com.spareparts.inventory.entity.Product;
+import com.spareparts.inventory.entity.Category;
 import com.spareparts.inventory.entity.User;
 import com.spareparts.inventory.repository.ProductRepository;
 import com.spareparts.inventory.repository.UserRepository;
+import com.spareparts.inventory.repository.CategoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,9 @@ public class ProductService {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @Transactional
     public ProductDto addProduct(ProductDto productDto, Long wholesalerId) {
@@ -37,6 +42,9 @@ public class ProductService {
         product.setStock(productDto.getStock());
         product.setImagePath(productDto.getImagePath());
         product.setWholesaler(wholesaler);
+        if (productDto.getCategoryId() != null) {
+            categoryRepository.findById(productDto.getCategoryId()).ifPresent(product::setCategory);
+        }
 
         product = productRepository.save(product);
         return convertToDto(product);
@@ -101,6 +109,11 @@ public class ProductService {
         product.setMechanicPrice(productDto.getMechanicPrice());
         product.setStock(productDto.getStock());
         product.setImagePath(productDto.getImagePath());
+        if (productDto.getCategoryId() != null) {
+            categoryRepository.findById(productDto.getCategoryId()).ifPresent(product::setCategory);
+        } else {
+            product.setCategory(null);
+        }
         product = productRepository.save(product);
         return convertToDto(product);
     }
@@ -134,6 +147,9 @@ public class ProductService {
         dto.setStock(product.getStock());
         dto.setImagePath(product.getImagePath());
         dto.setWholesalerId(product.getWholesaler().getId());
+        if (product.getCategory() != null) {
+            dto.setCategoryId(product.getCategory().getId());
+        }
         return dto;
     }
 }

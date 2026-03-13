@@ -2,6 +2,8 @@
 package com.spareparts.inventory.controller;
 
 import com.spareparts.inventory.dto.ProductDto;
+import com.spareparts.inventory.repository.ProductRepository;
+import com.spareparts.inventory.entity.Product;
 import com.spareparts.inventory.security.UserDetailsImpl;
 import com.spareparts.inventory.service.ProductService;
 import jakarta.validation.Valid;
@@ -12,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -43,8 +46,14 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductDto>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<List<ProductDto>> getAllProducts(@RequestParam(value = "categoryId", required = false) Long categoryId) {
+        if (categoryId == null) {
+            return ResponseEntity.ok(productService.getAllProducts());
+        }
+        List<ProductDto> list = productService.getAllProducts().stream()
+                .filter(p -> p.getCategoryId() != null && p.getCategoryId().equals(categoryId))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
     }
 
     @GetMapping("/search")
@@ -59,7 +68,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('WHOLESALER') or hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
     public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.ok().build();

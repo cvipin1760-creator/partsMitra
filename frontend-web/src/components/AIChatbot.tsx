@@ -261,6 +261,20 @@ const AIChatbot: React.FC = () => {
                             Add
                           </button>
                           <button
+                            onClick={async () => {
+                              try {
+                                const res = await api.post('/ai/order', { productId: p.id, quantity: 1 });
+                                const msg = `Order placed: #${res.data.orderId} • ₹${res.data.total}`;
+                                setMessages(prev => [...prev, { text: msg, isBot: true }]);
+                              } catch (e) {
+                                setMessages(prev => [...prev, { text: 'Failed to place order.', isBot: true }]);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-bold hover:bg-green-100"
+                          >
+                            Order
+                          </button>
+                          <button
                             onClick={() => navigate(`/shop?q=${encodeURIComponent(p.name)}`)}
                             className="px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-100"
                           >

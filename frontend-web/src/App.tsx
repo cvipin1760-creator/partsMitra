@@ -16,6 +16,7 @@ import { useLanguage } from './context/LanguageContext';
 import OrderStatus from './pages/OrderStatus';
 import { ROLE_ADMIN, ROLE_SUPER_MANAGER, ROLE_WHOLESALER, ROLE_STAFF } from './services/constants';
 import AIChatbot from './components/AIChatbot';
+import AdminCategories from './pages/AdminCategories';
 
 const App: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -54,9 +55,14 @@ const App: React.FC = () => {
             <>
               <span className="text-gray-600 font-medium hidden sm:inline">Welcome, {currentUser.name || currentUser.email}</span>
               {isAdminOrSuper && (
-                <Link to="/admin" className="text-gray-600 hover:text-primary-600 font-medium">
-                  {t('role.admin')}
-                </Link>
+                <>
+                  <Link to="/admin" className="text-gray-600 hover:text-primary-600 font-medium">
+                    {t('role.admin')}
+                  </Link>
+                  <Link to="/admin-categories" className="text-gray-600 hover:text-primary-600 font-medium">
+                    Categories
+                  </Link>
+                </>
               )}
               {currentUser?.roles.includes(ROLE_WHOLESALER) && (
                 <Link to="/wholesaler" className="text-gray-600 hover:text-primary-600 font-medium">
@@ -139,6 +145,12 @@ const App: React.FC = () => {
               ) : (
                 <Navigate to="/login" />
               )
+            }
+          />
+          <Route
+            path="/admin-categories"
+            element={
+              isAdminOrSuper ? <AdminCategories /> : <Navigate to="/login" />
             }
           />
           <Route

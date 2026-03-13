@@ -38,4 +38,6 @@ public class ProductDto {
     private String imagePath;
     
     private Long wholesalerId;
+    
+    private Long categoryId;
 }
