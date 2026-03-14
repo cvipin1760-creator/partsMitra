@@ -3,7 +3,7 @@ import api, { API_BASE_URL } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import AuthService from '../services/auth.service';
-import { ROLE_MECHANIC, ROLE_RETAILER, ROLE_WHOLESALER } from '../services/constants';
+import { ROLE_ADMIN, ROLE_MECHANIC, ROLE_RETAILER, ROLE_SUPER_MANAGER, ROLE_WHOLESALER } from '../services/constants';
 import { Search, ShoppingCart, Package, Info, CheckCircle2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import Skeleton from '../components/Skeleton';
@@ -19,6 +19,8 @@ const Shop: React.FC = () => {
   const location = useLocation();
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
+
+  const isRestricted = currentUser?.roles?.includes(ROLE_ADMIN) || currentUser?.roles?.includes(ROLE_SUPER_MANAGER);
 
   const getImageUrl = (path: string) => {
     if (!path) return '';
@@ -91,8 +93,6 @@ const Shop: React.FC = () => {
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.partNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const isMechanic = currentUser?.roles?.includes(ROLE_MECHANIC);
 
   const renderSkeletons = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -230,7 +230,7 @@ const Shop: React.FC = () => {
                     <span className="text-xs font-bold text-gray-600">{t('shop.stock')}: {p.stock}</span>
                   </div>
 
-                  {!isMechanic && (
+                  {!isRestricted && (
                     <button
                       onClick={() =>
                         addItem(

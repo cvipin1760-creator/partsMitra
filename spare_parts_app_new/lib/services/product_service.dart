@@ -188,15 +188,21 @@ class ProductService {
         }
         final enabledOnly = products.where((p) => p.enabled).toList();
         if (user.roles.contains(Constants.roleWholesaler)) {
-          return enabledOnly.where((p) => p.wholesalerPrice > 0).toList();
+          return enabledOnly
+              .where((p) => p.wholesalerPrice > 0 || p.sellingPrice > 0)
+              .toList();
         }
         if (user.roles.contains(Constants.roleRetailer)) {
-          return enabledOnly.where((p) => p.retailerPrice > 0).toList();
+          return enabledOnly
+              .where((p) => p.retailerPrice > 0 || p.sellingPrice > 0)
+              .toList();
         }
         if (user.roles.contains(Constants.roleMechanic)) {
-          return enabledOnly.where((p) => p.mechanicPrice > 0).toList();
+          return enabledOnly
+              .where((p) => p.mechanicPrice > 0 || p.sellingPrice > 0)
+              .toList();
         }
-        return enabledOnly;
+        return enabledOnly.where((p) => p.sellingPrice > 0).toList();
       }
       final db = await _dbService.database;
       final List<Map<String, dynamic>> maps =
@@ -214,13 +220,19 @@ class ProductService {
       }
       final enabledOnly = products.where((p) => p.enabled).toList();
       if (user.roles.contains(Constants.roleWholesaler)) {
-        return enabledOnly.where((p) => p.wholesalerPrice > 0).toList();
+        return enabledOnly
+            .where((p) => p.wholesalerPrice > 0 || p.sellingPrice > 0)
+            .toList();
       }
       if (user.roles.contains(Constants.roleRetailer)) {
-        return enabledOnly.where((p) => p.retailerPrice > 0).toList();
+        return enabledOnly
+            .where((p) => p.retailerPrice > 0 || p.sellingPrice > 0)
+            .toList();
       }
       if (user.roles.contains(Constants.roleMechanic)) {
-        return enabledOnly.where((p) => p.mechanicPrice > 0).toList();
+        return enabledOnly
+            .where((p) => p.mechanicPrice > 0 || p.sellingPrice > 0)
+            .toList();
       }
       return enabledOnly.where((p) => p.sellingPrice > 0).toList();
     } catch (e) {
@@ -260,15 +272,21 @@ class ProductService {
           return products;
         }
         if (user.roles.contains(Constants.roleWholesaler)) {
-          return products.where((p) => p.wholesalerPrice > 0).toList();
+          return products
+              .where((p) => p.wholesalerPrice > 0 || p.sellingPrice > 0)
+              .toList();
         }
         if (user.roles.contains(Constants.roleRetailer)) {
-          return products.where((p) => p.retailerPrice > 0).toList();
+          return products
+              .where((p) => p.retailerPrice > 0 || p.sellingPrice > 0)
+              .toList();
         }
         if (user.roles.contains(Constants.roleMechanic)) {
-          return products.where((p) => p.mechanicPrice > 0).toList();
+          return products
+              .where((p) => p.mechanicPrice > 0 || p.sellingPrice > 0)
+              .toList();
         }
-        return products;
+        return products.where((p) => p.sellingPrice > 0).toList();
       }
 
       final db = await _dbService.database;

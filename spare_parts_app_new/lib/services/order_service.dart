@@ -283,28 +283,9 @@ class OrderService {
   Future<Order?> updateOrderStatus(int orderId, String status) async {
     try {
       if (Constants.useRemote) {
-        final prefs = await SharedPreferences.getInstance();
-        final userStr = prefs.getString('user');
-
-        if (userStr == null) return null;
-
-        final user = jsonDecode(userStr);
-
-        final response = await http.put(
-          Uri.parse(
-            '${Constants.baseUrl}/orders/$orderId/status?status=$status',
-          ),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ${user['token']}',
-          },
-        );
-
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          return Order.fromJson(jsonDecode(response.body));
-        }
-
-        return null;
+        final json =
+            await _remote.putJson('/orders/$orderId/status?status=$status', {});
+        return Order.fromJson(json);
       }
 
       final db = await _dbService.database;
@@ -328,7 +309,16 @@ class OrderService {
   // ===============================
 
   Future<Order?> cancelOrder(int orderId) async {
-    return updateOrderStatus(orderId, 'CANCELLED');
+    try {
+      if (Constants.useRemote) {
+        final json = await _remote.putJson('/orders/$orderId/cancel', {});
+        return Order.fromJson(json);
+      }
+      return updateOrderStatus(orderId, 'CANCELLED');
+    } catch (e) {
+      debugPrint('Cancel order error: $e');
+      return null;
+    }
   }
 
   // ===============================

@@ -17,6 +17,9 @@ import '../services/order_service.dart';
 import 'order_confirmation_screen.dart';
 import '../utils/constants.dart';
 
+import 'package:spare_parts_app/screens/edit_product_screen.dart';
+import 'package:spare_parts_app/providers/auth_provider.dart';
+
 class WholesalerShopScreen extends StatefulWidget {
   const WholesalerShopScreen({super.key});
 
@@ -386,7 +389,7 @@ class _WholesalerShopScreenState extends State<WholesalerShopScreen> {
       return NetworkImage(path);
     }
     if (path.startsWith('/api/files/display/')) {
-      return NetworkImage('${Constants.baseUrl}$path');
+      return NetworkImage('${Constants.serverUrl}$path');
     }
     return FileImage(File(path));
   }
@@ -599,22 +602,83 @@ class _WholesalerShopScreenState extends State<WholesalerShopScreen> {
                                       ),
                                     ],
                                   ),
-                                  onTap: (isOutOfStock || isMechanic)
-                                      ? null
-                                      : () {
-                                          cart.addItem(product, price);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                '${product.name} added to cart',
-                                              ),
-                                              duration:
-                                                  const Duration(seconds: 1),
-                                              backgroundColor: Colors.green,
+                                  onTap: () {
+                                    final authProvider =
+                                        Provider.of<AuthProvider>(
+                                      context,
+                                      listen: false,
+                                    );
+                                    final isRestricted = authProvider
+                                                .user?.roles
+                                                .contains(
+                                                    Constants.roleAdmin) ==
+                                            true ||
+                                        authProvider.user?.roles.contains(
+                                                Constants.roleSuperManager) ==
+                                            true;
+
+                                    if (isRestricted) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Admin Action'),
+                                          content: const Text(
+                                            'What would you like to do?',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                                cart.addItem(product, price);
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      '${product.name} added to cart',
+                                                    ),
+                                                    duration: const Duration(
+                                                      seconds: 1,
+                                                    ),
+                                                    backgroundColor:
+                                                        Colors.blue,
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text(
+                                                  'Add to Cart (Test)'),
                                             ),
-                                          );
-                                        },
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        EditProductScreen(
+                                                      product: product,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text('Edit Product'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    } else if (!isOutOfStock) {
+                                      cart.addItem(product, price);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '${product.name} added to cart',
+                                          ),
+                                          duration: const Duration(seconds: 1),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  },
                                 ),
                               );
                             },

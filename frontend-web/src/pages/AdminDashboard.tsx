@@ -13,6 +13,13 @@ const AdminDashboard = () => {
   const currentUser = AuthService.getCurrentUser();
   const isSuperManager = currentUser?.roles?.includes(ROLE_SUPER_MANAGER);
 
+  const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const base = API_BASE_URL.endsWith('/api') ? API_BASE_URL.replace('/api', '') : API_BASE_URL;
+    return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
+
   const [users, setUsers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -151,6 +158,39 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to restore product');
+    }
+  };
+
+  const permanentDeleteUser = async (userId: number) => {
+    if (!window.confirm('Are you sure you want to permanently delete this user? This cannot be undone.')) return;
+    try {
+      await api.delete(`/admin/recycle-bin/users/${userId}/permanent`);
+      fetchDeletedItems();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to permanently delete user');
+    }
+  };
+
+  const permanentDeleteOrder = async (orderId: number) => {
+    if (!window.confirm('Are you sure you want to permanently delete this order? This cannot be undone.')) return;
+    try {
+      await api.delete(`/admin/recycle-bin/orders/${orderId}/permanent`);
+      fetchDeletedItems();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to permanently delete order');
+    }
+  };
+
+  const permanentDeleteProduct = async (productId: number) => {
+    if (!window.confirm('Are you sure you want to permanently delete this product? This cannot be undone.')) return;
+    try {
+      await api.delete(`/admin/recycle-bin/products/${productId}/permanent`);
+      fetchDeletedItems();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to permanently delete product');
     }
   };
 
@@ -297,6 +337,26 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to add product');
+    }
+  };
+
+  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingProduct) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post('/files/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setEditingProduct({ ...editingProduct, imagePath: res.data.url });
+    } catch (err) {
+      alert('Failed to upload image');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -761,7 +821,7 @@ const AdminDashboard = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       {product.imagePath ? (
-                        <img src={product.imagePath} alt={product.name} className="w-10 h-10 rounded-lg object-cover bg-gray-50 border border-gray-100" />
+                        <img src={getImageUrl(product.imagePath)} alt={product.name} className="w-10 h-10 rounded-lg object-cover bg-gray-50 border border-gray-100" />
                       ) : (
                         <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100">
                           <Package size={20} className="text-gray-300" />
@@ -885,13 +945,22 @@ const AdminDashboard = () => {
                       <span className="text-xs font-bold text-gray-600">{user.role?.name || user.role}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <button
-                        onClick={() => restoreUser(user.id)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 mx-auto text-xs font-bold"
-                      >
-                        <RotateCcw size={16} />
-                        Restore
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => restoreUser(user.id)}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
+                        >
+                          <RotateCcw size={16} />
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => permanentDeleteUser(user.id)}
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
+                        >
+                          <Trash2 size={16} />
+                          Delete Permanent
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )) : (
@@ -929,13 +998,22 @@ const AdminDashboard = () => {
                       <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{product.partNumber}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <button
-                        onClick={() => restoreProduct(product.id)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 mx-auto text-xs font-bold"
-                      >
-                        <RotateCcw size={16} />
-                        Restore
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => restoreProduct(product.id)}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
+                        >
+                          <RotateCcw size={16} />
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => permanentDeleteProduct(product.id)}
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
+                        >
+                          <Trash2 size={16} />
+                          Delete Permanent
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )) : (
@@ -977,13 +1055,22 @@ const AdminDashboard = () => {
                       <div className="text-sm font-black text-gray-900">₹{order.totalAmount.toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <button
-                        onClick={() => restoreOrder(order.id)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 mx-auto text-xs font-bold"
-                      >
-                        <RotateCcw size={16} />
-                        Restore
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => restoreOrder(order.id)}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
+                        >
+                          <RotateCcw size={16} />
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => permanentDeleteOrder(order.id)}
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
+                        >
+                          <Trash2 size={16} />
+                          Delete Permanent
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )) : (
@@ -1285,7 +1372,21 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Product Image URL</label>
+                <label className="block text-sm font-medium text-gray-700">Product Image</label>
+                <div className="mt-1 flex items-center space-x-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditImageUpload}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                    disabled={uploading}
+                  />
+                  {uploading && <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>}
+                </div>
+                {editingProduct.imagePath && <p className="text-xs text-green-600 mt-1">Image uploaded!</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Product Image URL (Optional)</label>
                 <input
                   type="text"
                   className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"

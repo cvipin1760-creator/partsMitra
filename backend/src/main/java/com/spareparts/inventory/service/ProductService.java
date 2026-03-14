@@ -82,11 +82,34 @@ public class ProductService extends ProductSubject {
 
     private Long findBestCategoryMatch(String name, String partNumber) {
         List<Category> allCategories = categoryRepository.findAll();
+        return findBestCategoryMatchInList(name, partNumber, allCategories);
+    }
+
+    private Long findBestCategoryMatchInList(String name, String partNumber, List<Category> allCategories) {
+        if (allCategories == null || allCategories.isEmpty()) return null;
+        
         String searchStr = (name + " " + partNumber).toLowerCase();
         
+        // 1. Try exact match first
         for (Category cat : allCategories) {
             String catName = cat.getName().toLowerCase();
-            // Match if category name is in product name/part number or vice-versa
+            if (searchStr.equals(catName)) return cat.getId();
+        }
+        
+        // 2. Try word-based matching
+        String[] keywords = searchStr.split("\\s+");
+        for (Category cat : allCategories) {
+            String catName = cat.getName().toLowerCase();
+            for (String kw : keywords) {
+                if (kw.length() > 2 && catName.contains(kw)) {
+                    return cat.getId();
+                }
+            }
+        }
+        
+        // 3. Fallback to substring matching
+        for (Category cat : allCategories) {
+            String catName = cat.getName().toLowerCase();
             if (searchStr.contains(catName) || catName.contains(name.toLowerCase())) {
                 return cat.getId();
             }
@@ -173,17 +196,6 @@ public class ProductService extends ProductSubject {
         }
     }
 
-    private Long findBestCategoryMatchInList(String name, String partNumber, List<Category> allCategories) {
-        String searchStr = (name + " " + partNumber).toLowerCase();
-        for (Category cat : allCategories) {
-            String catName = cat.getName().toLowerCase();
-            if (searchStr.contains(catName) || catName.contains(name.toLowerCase())) {
-                return cat.getId();
-            }
-        }
-        return null;
-    }
-
     @Transactional
     public ProductDto updateProduct(Long id, ProductDto productDto) {
         Product product = productRepository.findById(id)
@@ -222,6 +234,13 @@ public class ProductService extends ProductSubject {
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         product.setDeleted(false);
         productRepository.save(product);
+    }
+
+    @Transactional
+    public void deleteProductPermanent(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        productRepository.delete(product);
     }
 
     @Transactional

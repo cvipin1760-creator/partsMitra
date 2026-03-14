@@ -92,6 +92,18 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/recycle-bin/users/{userId}/permanent")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<?> deleteUserPermanent(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (user.getRole() != null && "ROLE_SUPER_MANAGER".equals(user.getRole().getName().name())) {
+            return ResponseEntity.status(403).body("Cannot delete SUPER_MANAGER");
+        }
+        userRepository.delete(user);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/sales")
     public ResponseEntity<Map<String, Object>> getSalesReport(@RequestParam String type) {
         return ResponseEntity.ok(orderService.getSalesReport(type));
@@ -175,6 +187,13 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/recycle-bin/orders/{orderId}/permanent")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<?> deleteOrderPermanent(@PathVariable Long orderId) {
+        orderService.deleteOrderPermanent(orderId);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/recycle-bin/products")
     public ResponseEntity<List<ProductDto>> getDeletedProducts() {
         return ResponseEntity.ok(productService.getDeletedProducts());
@@ -183,6 +202,13 @@ public class AdminController {
     @PostMapping("/recycle-bin/products/{productId}/restore")
     public ResponseEntity<?> restoreProduct(@PathVariable Long productId) {
         productService.restoreProduct(productId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/recycle-bin/products/{productId}/permanent")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<?> deleteProductPermanent(@PathVariable Long productId) {
+        productService.deleteProductPermanent(productId);
         return ResponseEntity.ok().build();
     }
 

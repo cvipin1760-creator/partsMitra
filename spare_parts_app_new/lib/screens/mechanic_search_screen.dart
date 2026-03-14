@@ -150,7 +150,9 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
         spoken = t.text;
       } catch (_) {}
       final lower = spoken.toLowerCase();
-      final qtyMatch = RegExp(r'(\\d+)\\s*(pcs|pieces|qty|quantity|nos|no)?').allMatches(lower).toList();
+      final qtyMatch = RegExp(r'(\\d+)\\s*(pcs|pieces|qty|quantity|nos|no)?')
+          .allMatches(lower)
+          .toList();
       int qty = 1;
       if (qtyMatch.isNotEmpty) {
         qty = int.tryParse(qtyMatch.last.group(1)!) ?? 1;
@@ -170,7 +172,10 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
       ]) {
         query = query.replaceAll(stop, ' ');
       }
-      final pnMatch = RegExp(r'[a-z0-9\\-_/\\.]+', caseSensitive: false).allMatches(query).map((m) => m.group(0)!).toList();
+      final pnMatch = RegExp(r'[a-z0-9\\-_/\\.]+', caseSensitive: false)
+          .allMatches(query)
+          .map((m) => m.group(0)!)
+          .toList();
       String finalQuery = query.trim();
       if (pnMatch.isNotEmpty) {
         finalQuery = pnMatch.join(' ').trim();
@@ -379,7 +384,7 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
       return NetworkImage(path);
     }
     if (path.startsWith('/api/files/display/')) {
-      return NetworkImage('${Constants.baseUrl}$path');
+      return NetworkImage('${Constants.serverUrl}$path');
     }
     return FileImage(File(path));
   }
@@ -453,10 +458,11 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
                       color: _isListening ? Colors.red : Colors.green,
                     ),
                   ),
-                IconButton(
-                  onPressed: _voiceAddToCart,
-                  icon: const Icon(Icons.add_shopping_cart, color: Colors.green),
-                ),
+                  IconButton(
+                    onPressed: _voiceAddToCart,
+                    icon: const Icon(Icons.add_shopping_cart,
+                        color: Colors.green),
+                  ),
                   IconButton(
                     onPressed: _showRequestDialog,
                     icon: const Icon(Icons.assignment_add, color: Colors.blue),
@@ -496,7 +502,8 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
                                     image: _getImageProvider(product.imagePath),
                                     fit: BoxFit.cover,
                                     onError: (exception, stackTrace) =>
-                                        const Icon(Icons.image, color: Colors.grey),
+                                        const Icon(Icons.image,
+                                            color: Colors.grey),
                                   ),
                                 ),
                               ),
@@ -526,12 +533,14 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
                               Text(
                                 'Part: ${product.partNumber} | Stock: ${isOutOfStock ? "Out of Stock" : product.stock}',
                                 style: TextStyle(
-                                  color: (product.stock > 0 && product.stock <= 5)
-                                      ? Colors.orange.shade700
-                                      : null,
-                                  fontWeight: (product.stock > 0 && product.stock <= 5)
-                                      ? FontWeight.bold
-                                      : null,
+                                  color:
+                                      (product.stock > 0 && product.stock <= 5)
+                                          ? Colors.orange.shade700
+                                          : null,
+                                  fontWeight:
+                                      (product.stock > 0 && product.stock <= 5)
+                                          ? FontWeight.bold
+                                          : null,
                                 ),
                               ),
                               if (discountPercent > 0)
@@ -573,8 +582,14 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
                               context,
                               listen: false,
                             );
-                            if (authProvider.user?.roles.contains('admin') ??
-                                false) {
+                            final isRestricted = authProvider.user?.roles
+                                        .contains(Constants.roleAdmin) ==
+                                    true ||
+                                authProvider.user?.roles
+                                        .contains(Constants.roleSuperManager) ==
+                                    true;
+
+                            if (isRestricted) {
                               showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
@@ -601,7 +616,7 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
                                           ),
                                         );
                                       },
-                                      child: const Text('Add to Cart'),
+                                      child: const Text('Add to Cart (Test)'),
                                     ),
                                     TextButton(
                                       onPressed: () {
@@ -615,7 +630,7 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
                                           ),
                                         );
                                       },
-                                      child: const Text('Edit'),
+                                      child: const Text('Edit Product'),
                                     ),
                                   ],
                                 ),

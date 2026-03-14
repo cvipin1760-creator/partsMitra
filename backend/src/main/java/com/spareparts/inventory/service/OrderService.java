@@ -289,6 +289,13 @@ public class OrderService {
     }
 
     @Transactional
+    public void deleteOrderPermanent(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        orderRepository.delete(order);
+    }
+
+    @Transactional
     public OrderDto updateOrderItems(Long orderId, List<OrderItemDto> itemDtos) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));

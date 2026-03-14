@@ -14,6 +14,14 @@ class Constants {
     return withoutTrailingSlash;
   }
 
+  static String get serverUrl {
+    final base = baseUrl;
+    if (base.endsWith('/api')) {
+      return base.substring(0, base.length - 4);
+    }
+    return base;
+  }
+
   static String get wsUrl {
     final uri = Uri.parse(baseUrl);
     final scheme = uri.scheme == 'https'

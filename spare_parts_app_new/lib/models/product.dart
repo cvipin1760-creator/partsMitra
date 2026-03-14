@@ -53,7 +53,9 @@ class Product {
       wholesalerId: json['wholesalerId'] ?? 0,
       imagePath: json['imagePath'],
       description: json['description'],
-      enabled: (json['enabled'] ?? 1) == 1,
+      enabled: json['enabled'] is bool
+          ? json['enabled']
+          : (json['enabled'] ?? 1) == 1,
       categoryId: json['categoryId'],
       categoryName: json['categoryName'],
     );

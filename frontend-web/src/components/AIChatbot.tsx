@@ -54,6 +54,13 @@ const AIChatbot: React.FC = () => {
     }
   };
 
+  const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const base = API_BASE_URL.endsWith('/api') ? API_BASE_URL.replace('/api', '') : API_BASE_URL;
+    return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -303,7 +310,7 @@ const AIChatbot: React.FC = () => {
                       <div key={p.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl">
                         <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 overflow-hidden">
                           {p.imagePath ? (
-                            <img src={p.imagePath} alt={p.name} className="w-12 h-12 object-cover" />
+                            <img src={getImageUrl(p.imagePath)} alt={p.name} className="w-12 h-12 object-cover" />
                           ) : (
                             <Bot className="w-6 h-6 text-gray-300" />
                           )}
