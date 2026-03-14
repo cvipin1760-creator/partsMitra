@@ -58,7 +58,7 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "deleted", nullable = false)
+    @Column(name = "deleted", nullable = false, columnDefinition = "boolean default false")
     private boolean deleted = false;
 
     public enum UserStatus {
