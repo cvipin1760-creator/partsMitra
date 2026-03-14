@@ -14,6 +14,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.math.BigDecimal;
+
 @SpringBootApplication
 public class InventoryApplication {
     public static void main(String[] args) {
@@ -49,11 +51,11 @@ public class InventoryApplication {
                 p1.setName("Engine Oil 5W-30");
                 p1.setPartNumber("EO-5W30-001");
                 p1.setRackNumber("A-101");
-                p1.setMrp(1200.0);
-                p1.setSellingPrice(950.0);
-                p1.setWholesalerPrice(800.0);
-                p1.setRetailerPrice(850.0);
-                p1.setMechanicPrice(900.0);
+                p1.setMrp(new BigDecimal("1200.0"));
+                p1.setSellingPrice(new BigDecimal("950.0"));
+                p1.setWholesalerPrice(new BigDecimal("800.0"));
+                p1.setRetailerPrice(new BigDecimal("850.0"));
+                p1.setMechanicPrice(new BigDecimal("900.0"));
                 p1.setStock(50);
                 p1.setEnabled(true);
                 p1.setDeleted(false);
@@ -64,11 +66,11 @@ public class InventoryApplication {
                 p2.setName("Brake Pads Front");
                 p2.setPartNumber("BP-F-002");
                 p2.setRackNumber("B-205");
-                p2.setMrp(2500.0);
-                p2.setSellingPrice(1800.0);
-                p2.setWholesalerPrice(1400.0);
-                p2.setRetailerPrice(1550.0);
-                p2.setMechanicPrice(1650.0);
+                p2.setMrp(new BigDecimal("2500.0"));
+                p2.setSellingPrice(new BigDecimal("1800.0"));
+                p2.setWholesalerPrice(new BigDecimal("1400.0"));
+                p2.setRetailerPrice(new BigDecimal("1550.0"));
+                p2.setMechanicPrice(new BigDecimal("1650.0"));
                 p2.setStock(20);
                 p2.setEnabled(true);
                 p2.setDeleted(false);

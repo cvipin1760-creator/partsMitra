@@ -37,6 +37,9 @@ public class Product {
     @Column(unique = true)
     private String partNumber;
 
+    @Size(max = 50)
+    private String rackNumber;
+
     @NotNull
     private BigDecimal mrp;
 
@@ -54,6 +57,9 @@ public class Product {
 
     @NotNull
     private Integer stock = 0;
+
+    @NotNull
+    private boolean enabled = true;
 
     @Size(max = 500)
     private String imagePath;

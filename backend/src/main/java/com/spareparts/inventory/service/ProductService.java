@@ -50,12 +50,14 @@ public class ProductService extends ProductSubject {
         Product product = new Product();
         product.setName(productDto.getName());
         product.setPartNumber(productDto.getPartNumber());
+        product.setRackNumber(productDto.getRackNumber());
         product.setMrp(productDto.getMrp());
         product.setSellingPrice(productDto.getSellingPrice());
         product.setWholesalerPrice(productDto.getWholesalerPrice());
         product.setRetailerPrice(productDto.getRetailerPrice());
         product.setMechanicPrice(productDto.getMechanicPrice());
         product.setStock(productDto.getStock());
+        product.setEnabled(productDto.isEnabled());
         product.setImagePath(productDto.getImagePath());
         product.setDescription(productDto.getDescription());
         product.setWholesaler(wholesaler);
@@ -140,12 +142,14 @@ public class ProductService extends ProductSubject {
             Product product = new Product();
             product.setName(dto.getName());
             product.setPartNumber(dto.getPartNumber());
+            product.setRackNumber(dto.getRackNumber());
             product.setMrp(dto.getMrp());
             product.setSellingPrice(dto.getSellingPrice());
             product.setWholesalerPrice(dto.getWholesalerPrice());
             product.setRetailerPrice(dto.getRetailerPrice());
             product.setMechanicPrice(dto.getMechanicPrice());
             product.setStock(dto.getStock());
+            product.setEnabled(dto.isEnabled());
             product.setImagePath(dto.getImagePath());
             product.setWholesaler(wholesaler);
 
@@ -186,12 +190,14 @@ public class ProductService extends ProductSubject {
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         product.setName(productDto.getName());
         product.setPartNumber(productDto.getPartNumber());
+        product.setRackNumber(productDto.getRackNumber());
         product.setMrp(productDto.getMrp());
         product.setSellingPrice(productDto.getSellingPrice());
         product.setWholesalerPrice(productDto.getWholesalerPrice());
         product.setRetailerPrice(productDto.getRetailerPrice());
         product.setMechanicPrice(productDto.getMechanicPrice());
         product.setStock(productDto.getStock());
+        product.setEnabled(productDto.isEnabled());
         product.setImagePath(productDto.getImagePath());
         if (productDto.getCategoryId() != null) {
             categoryRepository.findById(productDto.getCategoryId()).ifPresent(product::setCategory);
@@ -233,12 +239,14 @@ public class ProductService extends ProductSubject {
         dto.setId(product.getId());
         dto.setName(product.getName());
         dto.setPartNumber(product.getPartNumber());
+        dto.setRackNumber(product.getRackNumber());
         dto.setMrp(product.getMrp());
         dto.setSellingPrice(product.getSellingPrice());
         dto.setWholesalerPrice(product.getWholesalerPrice());
         dto.setRetailerPrice(product.getRetailerPrice());
         dto.setMechanicPrice(product.getMechanicPrice());
         dto.setStock(product.getStock());
+        dto.setEnabled(product.isEnabled());
         dto.setImagePath(product.getImagePath());
         dto.setDescription(product.getDescription());
         dto.setWholesalerId(product.getWholesaler().getId());

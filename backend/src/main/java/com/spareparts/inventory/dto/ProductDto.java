@@ -17,6 +17,8 @@ public class ProductDto {
     @NotBlank
     private String partNumber;
     
+    private String rackNumber;
+    
     @NotNull
     private BigDecimal mrp;
     
@@ -34,6 +36,8 @@ public class ProductDto {
     
     @NotNull
     private Integer stock;
+    
+    private boolean enabled;
     
     private String imagePath;
     private String description;
