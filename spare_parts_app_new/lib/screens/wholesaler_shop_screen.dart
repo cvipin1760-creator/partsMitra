@@ -354,8 +354,18 @@ class _WholesalerShopScreenState extends State<WholesalerShopScreen> {
     );
 
     if (result != null) {
-      _searchController.text = result;
-      _onSearchChanged(result);
+      final parsed = _productService.parseQRContent(result);
+      final pn = parsed['partNumber']!;
+      final mrp = parsed['mrp']!;
+
+      _searchController.text = pn;
+      _onSearchChanged(pn);
+
+      if (mrp.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scanned Part: $pn | MRP: ₹$mrp')),
+        );
+      }
     }
   }
 

@@ -245,8 +245,18 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
     );
 
     if (result != null) {
-      _searchController.text = result;
-      _searchProducts(result);
+      final parsed = _productService.parseQRContent(result);
+      final pn = parsed['partNumber']!;
+      final mrp = parsed['mrp']!;
+
+      _searchController.text = pn;
+      _searchProducts(pn);
+
+      if (mrp.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scanned Part: $pn | MRP: ₹$mrp')),
+        );
+      }
     }
   }
 

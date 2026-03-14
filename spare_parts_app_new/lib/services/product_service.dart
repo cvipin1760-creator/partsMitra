@@ -170,6 +170,56 @@ class ProductService {
     return Uint8List.fromList(excel.encode()!);
   }
 
+  Map<String, String> parseQRContent(String raw) {
+    // Typical Honda/Spare Part QR format: "PARTNUMBER,MRP,..."
+    // or just the part number.
+    // We try to extract Part Number and MRP.
+    final Map<String, String> result = {'partNumber': raw, 'mrp': ''};
+
+    // 1. Try splitting by comma
+    final parts = raw.split(',');
+    if (parts.length >= 2) {
+      // Check if the first part looks like a part number (alphanumeric, at least 5 chars)
+      final pn = parts[0].trim().toUpperCase();
+      if (RegExp(r'^[A-Z0-9\-_]{5,}$').hasMatch(pn)) {
+        result['partNumber'] = pn;
+        // Check if the second part looks like a price
+        final price = parts[1].trim();
+        if (RegExp(r'^\d+(\.\d+)?$').hasMatch(price)) {
+          result['mrp'] = price;
+        }
+      }
+    } else {
+      // 2. Try splitting by other delimiters like pipe or tab
+      final partsOther = raw.split(RegExp(r'[|\t]'));
+      if (partsOther.length >= 2) {
+        final pn = partsOther[0].trim().toUpperCase();
+        if (RegExp(r'^[A-Z0-9\-_]{5,}$').hasMatch(pn)) {
+          result['partNumber'] = pn;
+          final price = partsOther[1].trim();
+          if (RegExp(r'^\d+(\.\d+)?$').hasMatch(price)) {
+            result['mrp'] = price;
+          }
+        }
+      }
+    }
+
+    // Clean up result partNumber (some QR codes might have extra info)
+    // If partNumber is a URL, extract the last path segment or query param
+    if (result['partNumber']!.startsWith('http')) {
+      try {
+        final uri = Uri.parse(result['partNumber']!);
+        if (uri.pathSegments.isNotEmpty) {
+          result['partNumber'] = uri.pathSegments.last.toUpperCase();
+        } else if (uri.queryParameters.containsKey('pn')) {
+          result['partNumber'] = uri.queryParameters['pn']!.toUpperCase();
+        }
+      } catch (_) {}
+    }
+
+    return result;
+  }
+
   Future<List<Product>> getAllProducts() async {
     try {
       if (Constants.useRemote) {

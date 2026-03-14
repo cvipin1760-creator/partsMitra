@@ -1112,8 +1112,18 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
       ),
     );
     if (result != null) {
-      _searchController.text = result;
-      _fetchProducts(query: result);
+      final parsed = _productService.parseQRContent(result);
+      final pn = parsed['partNumber']!;
+      final mrp = parsed['mrp']!;
+
+      _searchController.text = pn;
+      _fetchProducts(query: pn);
+
+      if (mrp.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scanned Part: $pn | MRP: ₹$mrp')),
+        );
+      }
     }
   }
 
