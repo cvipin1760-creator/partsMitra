@@ -197,7 +197,11 @@ const Shop: React.FC = () => {
               onClick={() => { setCategoryId(c.id); }}
               className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-black border-2 transition-all ${categoryId === c.id ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-200 scale-105' : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'}`}
             >
-              {getCategoryIcon(c.name)}
+              {c.imageLink || c.imagePath ? (
+                <img src={getImageUrl(c.imageLink || c.imagePath)} alt="" className="w-5 h-5 object-cover rounded-full" />
+              ) : (
+                getCategoryIcon(c.name)
+              )}
               {c.name}
             </button>
           ))}

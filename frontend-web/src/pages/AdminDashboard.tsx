@@ -47,7 +47,7 @@ const AdminDashboard = () => {
   const [uploading, setUploading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [showAddCategory, setShowAddCategory] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '', imagePath: '' });
+  const [newCategory, setNewCategory] = useState({ name: '', description: '', imagePath: '', imageLink: '' });
   const [selectedExcelCategory, setSelectedExcelCategory] = useState<string>('');
 
   const [deletedUsers, setDeletedUsers] = useState<any[]>([]);
@@ -444,7 +444,7 @@ const AdminDashboard = () => {
     try {
       await api.post('/categories', newCategory);
       setShowAddCategory(false);
-      setNewCategory({ name: '', description: '', imagePath: '' });
+      setNewCategory({ name: '', description: '', imagePath: '', imageLink: '' });
       fetchCategories();
     } catch (err) {
       console.error(err);
@@ -1198,8 +1198,8 @@ const AdminDashboard = () => {
             {categories.map((category: any) => (
               <div key={category.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group">
                 <div className="h-40 bg-gray-50 relative overflow-hidden">
-                  {category.imagePath ? (
-                    <img src={getImageUrl(category.imagePath)} alt={category.name} className="w-full h-full object-cover" />
+                  {category.imageLink || category.imagePath ? (
+                    <img src={getImageUrl(category.imageLink || category.imagePath)} alt={category.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-300">
                       <Package size={48} />
@@ -1743,8 +1743,8 @@ const AdminDashboard = () => {
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
                     disabled={uploading}
                   />
-                  {newCategory.imagePath ? (
-                    <img src={getImageUrl(newCategory.imagePath)} alt="Preview" className="w-full h-32 object-cover rounded-xl" />
+                  {newCategory.imageLink || newCategory.imagePath ? (
+                    <img src={getImageUrl(newCategory.imageLink || newCategory.imagePath)} alt="Preview" className="w-full h-32 object-cover rounded-xl" />
                   ) : (
                     <>
                       <Upload className="text-gray-400 mb-2 group-hover:text-primary-500 transition" size={32} />
@@ -1758,6 +1758,16 @@ const AdminDashboard = () => {
                   )}
                 </div>
                 <p className="text-[10px] text-gray-400 mt-2 text-center font-bold uppercase tracking-widest">This image will be used for all products in this category</p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">OR Image Link (External URL)</label>
+                <input
+                  type="url"
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition"
+                  value={newCategory.imageLink}
+                  onChange={e => setNewCategory({...newCategory, imageLink: e.target.value})}
+                  placeholder="https://example.com/image.jpg"
+                />
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowAddCategory(false)} className="px-6 py-2 text-gray-500 hover:text-gray-700 font-bold transition">Cancel</button>

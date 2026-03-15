@@ -27,6 +27,9 @@ public class Category {
     @Column(length = 500)
     private String imagePath;
 
+    @Column(length = 500)
+    private String imageLink;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

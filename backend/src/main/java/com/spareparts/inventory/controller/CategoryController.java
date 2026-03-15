@@ -42,6 +42,7 @@ public class CategoryController {
         c.setName(name);
         c.setDescription(description);
         c.setImagePath(req.getOrDefault("imagePath", ""));
+        c.setImageLink(req.getOrDefault("imageLink", ""));
         return ResponseEntity.ok(categoryRepository.save(c));
     }
 
@@ -53,9 +54,11 @@ public class CategoryController {
         String name = req.getOrDefault("name", c.getName());
         String description = req.getOrDefault("description", c.getDescription());
         String imagePath = req.getOrDefault("imagePath", c.getImagePath());
+        String imageLink = req.getOrDefault("imageLink", c.getImageLink());
         c.setName(name);
         c.setDescription(description);
         c.setImagePath(imagePath);
+        c.setImageLink(imageLink);
         return ResponseEntity.ok(categoryRepository.save(c));
     }
 

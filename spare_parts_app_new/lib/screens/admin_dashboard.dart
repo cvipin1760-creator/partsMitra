@@ -27,6 +27,7 @@ import 'package:printing/printing.dart';
 import '../services/ocr_service.dart';
 import '../models/order.dart';
 import '../models/product.dart';
+import '../models/category.dart' as model;
 import '../utils/constants.dart';
 import '../utils/image_utils.dart';
 import 'profile_screen.dart';
@@ -4329,40 +4330,58 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
   Future<void> _fetchCategories() async {
     setState(() => _isLoading = true);
     try {
-      final res = await _remote.getList('/admin/categories');
+      final res = await _remote.getList('/categories');
       setState(() {
-        _categories = res;
+        _categories = res.map((e) => model.Category.fromJson(e)).toList();
         _isLoading = false;
       });
     } catch (e) {
-      // Fallback if /admin/categories is not the correct path
-      try {
-        final res = await _remote.getList('/categories');
-        setState(() {
-          _categories = res;
-          _isLoading = false;
-        });
-      } catch (e2) {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error fetching categories: $e2')),
-          );
-        }
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching categories: $e')),
+        );
       }
     }
   }
 
-  void _showAddCategoryDialog({Map<String, dynamic>? category}) {
+  void _showAddCategoryDialog({model.Category? category}) {
     final nameController =
-        TextEditingController(text: category != null ? category['name'] : '');
+        TextEditingController(text: category != null ? category.name : '');
+    final descriptionController = TextEditingController(
+        text: category != null ? category.description : '');
+    final imagePathController =
+        TextEditingController(text: category != null ? category.imagePath : '');
+    final imageLinkController =
+        TextEditingController(text: category != null ? category.imageLink : '');
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(category == null ? 'Add Category' : 'Edit Category'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: 'Category Name'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Category Name'),
+              ),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(labelText: 'Description'),
+              ),
+              TextField(
+                controller: imagePathController,
+                decoration: const InputDecoration(labelText: 'Image Path'),
+              ),
+              TextField(
+                controller: imageLinkController,
+                decoration:
+                    const InputDecoration(labelText: 'Image Link (URL)'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -4372,38 +4391,28 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
               if (nameController.text.isEmpty) return;
               try {
                 if (category == null) {
-                  await _remote.postJson('/admin/categories', {
+                  await _remote.postJson('/categories', {
                     'name': nameController.text,
+                    'description': descriptionController.text,
+                    'imagePath': imagePathController.text,
+                    'imageLink': imageLinkController.text,
                   });
                 } else {
-                  await _remote.putJson('/admin/categories/${category['id']}', {
-                    'id': category['id'],
+                  await _remote.putJson('/categories/${category.id}', {
+                    'id': category.id,
                     'name': nameController.text,
+                    'description': descriptionController.text,
+                    'imagePath': imagePathController.text,
+                    'imageLink': imageLinkController.text,
                   });
                 }
                 Navigator.pop(ctx);
                 _fetchCategories();
               } catch (e) {
-                // Try fallback paths
-                try {
-                  if (category == null) {
-                    await _remote.postJson('/categories', {
-                      'name': nameController.text,
-                    });
-                  } else {
-                    await _remote.putJson('/categories/${category['id']}', {
-                      'id': category['id'],
-                      'name': nameController.text,
-                    });
-                  }
-                  Navigator.pop(ctx);
-                  _fetchCategories();
-                } catch (e2) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e2')),
-                    );
-                  }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
                 }
               }
             },
@@ -4434,18 +4443,13 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
     if (confirmed != true) return;
 
     try {
-      await _remote.delete('/admin/categories/$id');
+      await _remote.delete('/categories/$id');
       _fetchCategories();
     } catch (e) {
-      try {
-        await _remote.delete('/categories/$id');
-        _fetchCategories();
-      } catch (e2) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting category: $e2')),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting category: $e')),
+        );
       }
     }
   }
@@ -4460,18 +4464,26 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
         child: ListView.builder(
           itemCount: _categories.length,
           itemBuilder: (ctx, i) {
-            final cat = _categories[i] as Map<String, dynamic>;
+            final cat = _categories[i] as model.Category;
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: ListTile(
-                leading: const CircleAvatar(
+                leading: CircleAvatar(
                   backgroundColor: Colors.redAccent,
-                  child: Icon(Icons.category, color: Colors.white),
+                  backgroundImage:
+                      cat.imagePath != null && cat.imagePath!.isNotEmpty
+                          ? NetworkImage(cat.imagePath!)
+                          : null,
+                  child: cat.imagePath == null || cat.imagePath!.isEmpty
+                      ? const Icon(Icons.category, color: Colors.white)
+                      : null,
                 ),
                 title: Text(
-                  cat['name'],
+                  cat.name,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
+                subtitle:
+                    cat.description != null ? Text(cat.description!) : null,
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -4481,7 +4493,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteCategory(cat['id'] as int),
+                      onPressed: () => _deleteCategory(cat.id),
                     ),
                   ],
                 ),

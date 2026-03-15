@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 
-type Category = { id: number; name: string; description?: string };
+type Category = { id: number; name: string; description?: string; imagePath?: string; imageLink?: string };
 
 const AdminCategories: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [imagePath, setImagePath] = useState('');
+  const [imageLink, setImageLink] = useState('');
   const [editing, setEditing] = useState<Category | null>(null);
   const [assignProductId, setAssignProductId] = useState('');
   const [assignCategoryId, setAssignCategoryId] = useState('');
@@ -34,12 +36,14 @@ const AdminCategories: React.FC = () => {
     setError('');
     try {
       if (editing) {
-        await api.put(`/categories/${editing.id}`, { name, description });
+        await api.put(`/categories/${editing.id}`, { name, description, imagePath, imageLink });
       } else {
-        await api.post('/categories', { name, description });
+        await api.post('/categories', { name, description, imagePath, imageLink });
       }
       setName('');
       setDescription('');
+      setImagePath('');
+      setImageLink('');
       setEditing(null);
       await load();
     } catch {
@@ -98,10 +102,12 @@ const AdminCategories: React.FC = () => {
           <div className="space-y-3">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="w-full border rounded px-3 py-2" />
             <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="w-full border rounded px-3 py-2" />
+            <input value={imagePath} onChange={(e) => setImagePath(e.target.value)} placeholder="Image Path (Upload Result)" className="w-full border rounded px-3 py-2" />
+            <input value={imageLink} onChange={(e) => setImageLink(e.target.value)} placeholder="Image Link (External URL)" className="w-full border rounded px-3 py-2" />
             <div className="flex gap-2">
               <button onClick={submit} disabled={loading || !name.trim()} className="px-4 py-2 rounded bg-primary-600 text-white hover:bg-primary-700">Save</button>
               {editing && (
-                <button onClick={() => { setEditing(null); setName(''); setDescription(''); }} className="px-4 py-2 rounded bg-gray-100">Cancel</button>
+                <button onClick={() => { setEditing(null); setName(''); setDescription(''); setImagePath(''); setImageLink(''); }} className="px-4 py-2 rounded bg-gray-100">Cancel</button>
               )}
             </div>
           </div>
@@ -134,7 +140,7 @@ const AdminCategories: React.FC = () => {
                   {c.description && <div className="text-sm text-gray-500">{c.description}</div>}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditing(c); setName(c.name); setDescription(c.description || ''); }} className="px-3 py-1 rounded bg-gray-100">Edit</button>
+                  <button onClick={() => { setEditing(c); setName(c.name); setDescription(c.description || ''); setImagePath(c.imagePath || ''); setImageLink(c.imageLink || ''); }} className="px-3 py-1 rounded bg-gray-100">Edit</button>
                   <button onClick={() => del(c.id)} className="px-3 py-1 rounded bg-red-600 text-white">Delete</button>
                 </div>
               </div>
