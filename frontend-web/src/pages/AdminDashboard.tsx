@@ -328,9 +328,9 @@ const AdminDashboard = () => {
         ...newProduct,
         mrp: parseFloat(String(newProduct.mrp)) || 0,
         sellingPrice: parseFloat(String(newProduct.sellingPrice)) || 0,
-        wholesalerPrice: newProduct.wholesalerPrice ? parseFloat(String(newProduct.wholesalerPrice)) : undefined,
-        retailerPrice: newProduct.retailerPrice ? parseFloat(String(newProduct.retailerPrice)) : undefined,
-        mechanicPrice: newProduct.mechanicPrice ? parseFloat(String(newProduct.mechanicPrice)) : undefined,
+        wholesalerPrice: parseFloat(String(newProduct.wholesalerPrice)) || 0,
+        retailerPrice: parseFloat(String(newProduct.retailerPrice)) || 0,
+        mechanicPrice: parseFloat(String(newProduct.mechanicPrice)) || 0,
         stock: parseInt(String(newProduct.stock)) || 0,
         wholesalerId: newProduct.wholesalerId ? parseInt(newProduct.wholesalerId as any) : 1,
         categoryId: newProduct.categoryId ? parseInt(newProduct.categoryId as any) : undefined
@@ -375,9 +375,9 @@ const AdminDashboard = () => {
         ...editingProduct,
         mrp: parseFloat(String(editingProduct.mrp)) || 0,
         sellingPrice: parseFloat(String(editingProduct.sellingPrice)) || 0,
-        wholesalerPrice: editingProduct.wholesalerPrice ? parseFloat(String(editingProduct.wholesalerPrice)) : undefined,
-        retailerPrice: editingProduct.retailerPrice ? parseFloat(String(editingProduct.retailerPrice)) : undefined,
-        mechanicPrice: editingProduct.mechanicPrice ? parseFloat(String(editingProduct.mechanicPrice)) : undefined,
+        wholesalerPrice: parseFloat(String(editingProduct.wholesalerPrice)) || 0,
+        retailerPrice: parseFloat(String(editingProduct.retailerPrice)) || 0,
+        mechanicPrice: parseFloat(String(editingProduct.mechanicPrice)) || 0,
         stock: parseInt(String(editingProduct.stock)) || 0,
         categoryId: editingProduct.categoryId ? parseInt(editingProduct.categoryId as any) : undefined
       });
