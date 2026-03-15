@@ -64,6 +64,13 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProduct(id, productDto));
     }
 
+    @DeleteMapping("/empty-recycle-bin")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<?> emptyRecycleBin() {
+        productService.emptyRecycleBin();
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
     public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
@@ -75,13 +82,6 @@ public class ProductController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
     public ResponseEntity<?> deleteProductsBulk(@RequestBody List<Long> ids) {
         productService.deleteProductsBulk(ids);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/empty-recycle-bin")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
-    public ResponseEntity<?> emptyRecycleBin() {
-        productService.emptyRecycleBin();
         return ResponseEntity.ok().build();
     }
 }

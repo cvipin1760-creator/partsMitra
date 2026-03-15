@@ -21,6 +21,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategory_IdAndDeletedFalse(Long categoryId);
     List<Product> findByDeletedFalse();
     List<Product> findByDeletedTrue();
+    
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
     void deleteByDeletedTrue();
 
     // Legacy support for older code
