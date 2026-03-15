@@ -77,4 +77,11 @@ public class ProductController {
         productService.deleteProductsBulk(ids);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/empty-recycle-bin")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<?> emptyRecycleBin() {
+        productService.emptyRecycleBin();
+        return ResponseEntity.ok().build();
+    }
 }

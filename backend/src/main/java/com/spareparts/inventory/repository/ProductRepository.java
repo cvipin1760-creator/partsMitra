@@ -21,6 +21,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategory_IdAndDeletedFalse(Long categoryId);
     List<Product> findByDeletedFalse();
     List<Product> findByDeletedTrue();
+    void deleteByDeletedTrue();
 
     // Legacy support for older code
     default List<Product> findByNameContainingIgnoreCaseOrPartNumberContainingIgnoreCase(String name, String partNumber) {

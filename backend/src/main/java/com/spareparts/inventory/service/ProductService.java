@@ -256,6 +256,11 @@ public class ProductService extends ProductSubject {
         productRepository.saveAll(products);
     }
 
+    @Transactional
+    public void emptyRecycleBin() {
+        productRepository.deleteByDeletedTrue();
+    }
+
     private ProductDto convertToDto(Product product) {
         ProductDto dto = new ProductDto();
         dto.setId(product.getId());

@@ -199,6 +199,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleEmptyRecycleBin = async () => {
+    if (!window.confirm('Are you sure you want to empty the Recycle Bin? All deleted products will be permanently removed. This action cannot be undone.')) return;
+    try {
+      await api.delete('/products/empty-recycle-bin');
+      fetchDeletedItems();
+      alert('Recycle bin emptied successfully');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to empty recycle bin');
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       const res = await api.get('/admin/users');
@@ -1109,11 +1121,20 @@ const AdminDashboard = () => {
 
           {/* Deleted Products */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
               <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
                 <Package size={20} className="text-primary-600" />
                 Deleted Products
               </h3>
+              {deletedProducts.length > 0 && (
+                <button
+                  onClick={handleEmptyRecycleBin}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-100 font-bold text-xs flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Empty Recycle Bin
+                </button>
+              )}
             </div>
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50/30">
