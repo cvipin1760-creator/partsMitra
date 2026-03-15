@@ -527,9 +527,22 @@ const AdminDashboard = () => {
           {isSuperManager ? 'Super Manager Panel' : 'Admin Panel'}
         </h1>
         <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm">
+            <span className="text-[10px] font-black text-gray-400 uppercase">Category:</span>
+            <select
+              className="text-xs font-bold text-gray-700 bg-transparent outline-none border-none focus:ring-0"
+              value={selectedExcelCategory}
+              onChange={e => setSelectedExcelCategory(e.target.value)}
+            >
+              <option value="">Auto (AI)</option>
+              {categories.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
           <label className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-700 cursor-pointer transition shadow-lg shadow-green-100 font-bold text-sm">
             <Upload size={18} />
-            <span>Import</span>
+            <span>Import Excel</span>
             <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleExcelUpload} />
           </label>
           <button 

@@ -7,6 +7,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:translator/translator.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:async';
 import '../services/settings_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/product_service.dart';
@@ -83,6 +87,127 @@ class _WholesalerShopScreenState extends State<WholesalerShopScreen> {
 
   void _onSearchChanged(String val) {
     _applyFilters();
+  }
+
+  void _importExcel() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        withData: true,
+      );
+      if (result != null) {
+        int? selectedCategoryId;
+
+        if (mounted) {
+          selectedCategoryId = await showDialog<int>(
+            context: context,
+            builder: (ctx) => StatefulBuilder(
+              builder: (context, setDialogState) => AlertDialog(
+                title: const Text('Target Category'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                        'Select a category to assign all imported products to:'),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      value: selectedCategoryId,
+                      decoration: const InputDecoration(
+                        labelText: 'Category (Optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: null,
+                          child: Text('Auto-categorize (AI)'),
+                        ),
+                        ..._categories.map((c) => DropdownMenuItem<int>(
+                              value: c['id'] as int?,
+                              child: Text(c['name'] ?? ''),
+                            )),
+                      ],
+                      onChanged: (val) =>
+                          setDialogState(() => selectedCategoryId = val),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, -1), // Cancel
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, selectedCategoryId),
+                    child: const Text('Start Import'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (selectedCategoryId == -1) return;
+
+        setState(() => _isLoading = true);
+        Uint8List? bytes = result.files.first.bytes;
+        if (bytes == null && !kIsWeb && result.files.first.path != null) {
+          bytes = await File(result.files.first.path!).readAsBytes();
+        }
+
+        if (bytes == null) {
+          throw Exception('Could not read file data');
+        }
+
+        if (Constants.useRemote) {
+          await _productService.uploadExcel(bytes,
+              categoryId: selectedCategoryId);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Imported successfully!')),
+            );
+            _fetchProducts();
+          }
+        } else {
+          final count = await _productService.importProductsFromExcel(bytes,
+              categoryId: selectedCategoryId);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Imported $count products locally!')),
+            );
+            _fetchProducts();
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _exportExcel() async {
+    try {
+      final bytes = await _productService.exportProductsToExcel();
+      if (kIsWeb) {
+        // Handle web export if needed or just use printing/download
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/products_export.xlsx');
+        await file.writeAsBytes(bytes);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exported to ${file.path}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
   }
 
   void _applyFilters() {
@@ -1158,6 +1283,25 @@ class _WholesalerShopScreenState extends State<WholesalerShopScreen> {
                               onTap: () {
                                 Navigator.pop(ctx);
                                 _showRequestDialog();
+                              },
+                            ),
+                            const Divider(),
+                            ListTile(
+                              leading: const Icon(Icons.file_upload,
+                                  color: Colors.blue),
+                              title: const Text('Bulk Import (Excel)'),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                _importExcel();
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.file_download,
+                                  color: Colors.green),
+                              title: const Text('Bulk Export (Excel)'),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                _exportExcel();
                               },
                             ),
                           ],

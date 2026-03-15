@@ -160,8 +160,38 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                           otp: _otpController.text,
                                         );
                                         if (success) {
-                                          _showFeedback('Registration successful! Please login.');
-                                          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (ctx) => AlertDialog(
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          20)),
+                                              title: const Row(
+                                                children: [
+                                                  Icon(Icons.check_circle,
+                                                      color: Colors.green),
+                                                  SizedBox(width: 10),
+                                                  Text('Completed'),
+                                                ],
+                                              ),
+                                              content: const Text(
+                                                  'Registration completed successfully! Please login to continue.'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.of(ctx).pop();
+                                                    Navigator.of(context)
+                                                        .pushNamedAndRemoveUntil(
+                                                            '/',
+                                                            (route) => false);
+                                                  },
+                                                  child: const Text('OK'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
                                         }
                                       } else {
                                         // Standalone verification

@@ -54,11 +54,11 @@ const Register = () => {
 
     AuthService.register(name, email, password, role, phone, '', otp, address).then(
       () => {
-        setMessage(`${t('common.success')}! Welcome ${name}.`);
+        setMessage(`${t('common.success')}! Registration completed successfully. Redirecting to login...`);
         setLoading(false);
         setTimeout(() => {
           navigate('/login');
-        }, 2000);
+        }, 3000);
       },
       (error) => {
         const resMessage =
