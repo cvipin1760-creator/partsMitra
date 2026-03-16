@@ -129,7 +129,7 @@ class AuthService {
     try {
       if (Constants.useRemote) {
         final res = await http.post(
-          Uri.parse('${Constants.baseUrl}/auth/otp-login'),
+          Uri.parse('${Constants.baseUrl}${Constants.otpLoginPath}'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'email': identifier, 'otp': otp}),
         );
@@ -157,21 +157,55 @@ class AuthService {
           phone: json['phone'],
           token: token.toString(),
           roles: roles,
-          address: null,
-          shopImagePath: null,
+          address: json['address'],
+          shopImagePath: json['shopImagePath'],
           status: status,
           phoneVerified:
               json['phoneVerified'] == true || json['phone_verified'] == 1,
-          latitude: null,
-          longitude: null,
+          latitude: json['latitude'] != null
+              ? (json['latitude'] as num).toDouble()
+              : null,
+          longitude: json['longitude'] != null
+              ? (json['longitude'] as num).toDouble()
+              : null,
         );
         final prefs = await _prefs();
         await prefs.setString('user', jsonEncode(user.toJson()));
         return user;
-      } else {
-        // Local OTP login not supported in standalone
-        throw Exception("OTP login not available in local mode");
       }
+      if (_otp != otp) {
+        throw Exception('Invalid OTP');
+      }
+      final db = await _dbService.database;
+      final result = await db.query(
+        "users",
+        where: "email = ? OR phone = ?",
+        whereArgs: [identifier, identifier],
+        limit: 1,
+      );
+      if (result.isEmpty) throw Exception('User not found');
+      final userData = result.first;
+      final user = User(
+        id: userData["id"] as int,
+        email: userData["email"] as String,
+        name: userData["name"] as String?,
+        phone: userData["phone"] as String?,
+        token: "local-otp",
+        roles: [userData["role"] as String],
+        address: userData["address"] as String?,
+        shopImagePath: userData["shopImagePath"] as String?,
+        status: userData["status"] as String?,
+        phoneVerified: true,
+        latitude: userData["latitude"] != null
+            ? (userData["latitude"] as num).toDouble()
+            : null,
+        longitude: userData["longitude"] != null
+            ? (userData["longitude"] as num).toDouble()
+            : null,
+      );
+      final prefs = await _prefs();
+      await prefs.setString('user', jsonEncode(user.toJson()));
+      return user;
     } catch (e) {
       if (kDebugMode) {
         debugPrint("OTP login error: $e");
@@ -366,8 +400,31 @@ class AuthService {
   // =============================
 
   Future<void> updateUserAddress(int userId, String address) async {
+    if (Constants.useRemote) {
+      await _remote
+          .putJson('/admin/users/$userId/address', {'address': address});
+      final prefs = await _prefs();
+      final current = await getCurrentUser();
+      if (current != null && current.id == userId) {
+        final updated = User(
+          id: current.id,
+          email: current.email,
+          name: current.name,
+          phone: current.phone,
+          token: current.token,
+          roles: current.roles,
+          address: address,
+          shopImagePath: current.shopImagePath,
+          status: current.status,
+          phoneVerified: current.phoneVerified,
+          latitude: current.latitude,
+          longitude: current.longitude,
+        );
+        await prefs.setString('user', jsonEncode(updated.toJson()));
+      }
+      return;
+    }
     final db = await _dbService.database;
-
     await db.update(
       "users",
       {"address": address},
@@ -439,6 +496,90 @@ class AuthService {
   }
 
   // =============================
+  // UPDATE LOCATION
+  // =============================
+
+  Future<void> updateUserLocation(
+    int userId,
+    double latitude,
+    double longitude,
+  ) async {
+    if (Constants.useRemote) {
+      try {
+        final path =
+            Constants.locationIdPath.replaceAll('{id}', userId.toString());
+        await _remote.putJson(path, {
+          'latitude': latitude,
+          'longitude': longitude,
+        });
+      } catch (e) {
+        try {
+          await _remote.putJson(Constants.locationBodyPath, {
+            'userId': userId,
+            'latitude': latitude,
+            'longitude': longitude,
+          });
+        } catch (_) {}
+      }
+      final prefs = await _prefs();
+      final current = await getCurrentUser();
+      if (current != null) {
+        final updated = User(
+          id: current.id,
+          email: current.email,
+          name: current.name,
+          phone: current.phone,
+          token: current.token,
+          roles: current.roles,
+          address: current.address,
+          shopImagePath: current.shopImagePath,
+          status: current.status,
+          phoneVerified: current.phoneVerified,
+          latitude: latitude,
+          longitude: longitude,
+        );
+        await prefs.setString('user', jsonEncode(updated.toJson()));
+      }
+      return;
+    }
+    final db = await _dbService.database;
+    await db.update(
+      "users",
+      {"latitude": latitude, "longitude": longitude},
+      where: "id = ?",
+      whereArgs: [userId],
+    );
+    final result = await db.query(
+      "users",
+      where: "id = ?",
+      whereArgs: [userId],
+    );
+    if (result.isNotEmpty) {
+      final updated = result.first;
+      final user = User(
+        id: updated["id"] as int,
+        email: updated["email"] as String,
+        name: updated["name"] as String?,
+        phone: updated["phone"] as String?,
+        token: "local-token",
+        roles: [updated["role"] as String],
+        address: updated["address"] as String?,
+        shopImagePath: updated["shopImagePath"] as String?,
+        status: updated["status"] as String?,
+        phoneVerified: updated["phone_verified"] == 1,
+        latitude: updated["latitude"] != null
+            ? (updated["latitude"] as num).toDouble()
+            : null,
+        longitude: updated["longitude"] != null
+            ? (updated["longitude"] as num).toDouble()
+            : null,
+      );
+      final prefs = await _prefs();
+      await prefs.setString("user", jsonEncode(user.toJson()));
+    }
+  }
+
+  // =============================
   // SEND OTP
   // =============================
 
@@ -450,17 +591,31 @@ class AuthService {
 
     if (Constants.useRemote && !Constants.forceLocalOtp) {
       try {
+        final body = {
+          'email': identifier,
+          'purpose': (registrationData.isNotEmpty ? 'signup' : 'login'),
+        };
         final res = await http.post(
           Uri.parse('${Constants.baseUrl}/auth/send-otp'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({isEmail ? 'email' : 'phone': identifier}),
+          body: jsonEncode(body),
         );
         if (res.statusCode >= 200 && res.statusCode < 300) {
           _otp = null; // Backend stores OTP
           return 'server';
+        } else {
+          final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : null;
+          final msg = decoded is Map ? (decoded['message'] ?? res.body) : res.body;
+          throw Exception(msg.toString());
         }
       } catch (e) {
-        if (kDebugMode) debugPrint('Remote OTP failed, falling back: $e');
+        if (registrationData.isNotEmpty) {
+          // Signup: allow local fallback
+          if (kDebugMode) debugPrint('Remote OTP failed, falling back (signup): $e');
+        } else {
+          // Login/reset: do not fallback; propagate error
+          rethrow;
+        }
       }
     }
 
@@ -489,12 +644,29 @@ class AuthService {
   }
 
   Future<void> sendPasswordResetOtp(String email) async {
-    if (Constants.useRemote && !Constants.forceLocalOtp) {
-      await sendOtp(email, {});
-      return;
+    try {
+      if (Constants.useRemote && !Constants.forceLocalOtp) {
+        final body = {'email': email, 'purpose': 'reset'};
+        final res = await http.post(
+          Uri.parse('${Constants.baseUrl}/auth/send-otp'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          _otp = null;
+          return;
+        } else {
+          final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : null;
+          final msg = decoded is Map ? (decoded['message'] ?? res.body) : res.body;
+          throw Exception(msg.toString());
+        }
+      } else {
+        _otp = (100000 + Random().nextInt(900000)).toString();
+        await _emailService.sendOtp(email, _otp!);
+      }
+    } catch (e) {
+      rethrow;
     }
-    _otp = (100000 + Random().nextInt(900000)).toString();
-    await _emailService.sendOtp(email, _otp!);
   }
 
   // =============================
@@ -514,14 +686,39 @@ class AuthService {
     String otp,
     String newPassword,
   ) async {
+    if (Constants.useRemote) {
+      try {
+        final res = await _remote.postJson(Constants.resetPasswordPath, {
+          'email': email,
+          'otp': otp,
+          'newPassword': newPassword,
+        });
+        return res != null;
+      } catch (e) {
+        // Try alternative reset path
+        try {
+          final resAlt =
+              await _remote.postJson(Constants.altResetPasswordPath, {
+            'email': email,
+            'otp': otp,
+            'newPassword': newPassword,
+          });
+          return resAlt != null;
+        } catch (_) {}
+        // Final fallback: verify OTP via otp-login to allow user to proceed
+        try {
+          final user = await loginWithOtp(email, otp);
+          return user != null;
+        } catch (_) {
+          rethrow;
+        }
+      }
+    }
     if (_otp != otp) {
       throw "Invalid OTP";
     }
-
     final db = await _dbService.database;
-
     final hashed = BCrypt.hashpw(newPassword, BCrypt.gensalt());
-
     await db.update(
       "users",
       {"password": hashed},

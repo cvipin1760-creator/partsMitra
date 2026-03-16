@@ -29,6 +29,7 @@ import '../services/ocr_service.dart';
 import '../models/order.dart';
 import '../models/product.dart';
 import '../models/category.dart' as model;
+import '../models/user.dart';
 import '../utils/constants.dart';
 import '../utils/image_utils.dart';
 import 'profile_screen.dart';
@@ -36,6 +37,9 @@ import 'package:translator/translator.dart';
 import 'package:open_file/open_file.dart';
 import '../widgets/product_grid_item.dart';
 import '../widgets/ai_chatbot_widget.dart';
+import '../services/auth_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'admin_settings_screen.dart';
 import '../services/settings_service.dart';
 import '../widgets/cart_badge.dart';
@@ -633,6 +637,13 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
                       (context.findAncestorStateOfType<_AdminDashboardState>())
                           ?._selectedIndex = 7),
             ),
+            _buildQuickAction(
+              context,
+              'Assign User Location',
+              Icons.my_location,
+              Colors.purple.shade700,
+              () => _showAssignLocationDialog(context),
+            ),
           ],
         ),
       ),
@@ -687,6 +698,162 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showAssignLocationDialog(BuildContext context) async {
+    final authService = AuthService();
+    List<User> users = [];
+    User? selected;
+    final latCtrl = TextEditingController();
+    final lonCtrl = TextEditingController();
+    final addrCtrl = TextEditingController();
+    bool loading = true;
+    try {
+      users = await authService.getAllUsers();
+    } catch (_) {}
+    loading = false;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Assign User Location'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<User>(
+                  isExpanded: true,
+                  value: selected,
+                  items: users
+                      .map((u) => DropdownMenuItem<User>(
+                            value: u,
+                            child: Text(u.name ?? u.email),
+                          ))
+                      .toList(),
+                  onChanged: (val) => setState(() => selected = val),
+                  decoration: const InputDecoration(
+                    labelText: 'Select User',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: latCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Latitude'),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: lonCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Longitude'),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: addrCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Address'),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final serviceEnabled =
+                              await Geolocator.isLocationServiceEnabled();
+                          if (!serviceEnabled) return;
+                          var permission = await Geolocator.checkPermission();
+                          if (permission == LocationPermission.denied) {
+                            permission = await Geolocator.requestPermission();
+                            if (permission == LocationPermission.denied) return;
+                          }
+                          if (permission == LocationPermission.deniedForever) {
+                            return;
+                          }
+                          final pos = await Geolocator.getCurrentPosition(
+                              locationSettings: const LocationSettings(
+                                  accuracy: LocationAccuracy.high));
+                          setState(() {
+                            latCtrl.text = pos.latitude.toStringAsFixed(6);
+                            lonCtrl.text = pos.longitude.toStringAsFixed(6);
+                          });
+                        },
+                        icon: const Icon(Icons.gps_fixed, size: 18),
+                        label: const Text('Use My GPS'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final lat = double.tryParse(latCtrl.text);
+                          final lon = double.tryParse(lonCtrl.text);
+                          if (lat == null || lon == null) return;
+                          try {
+                            final uri = Uri.parse(
+                                'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lon');
+                            final res = await http.get(uri,
+                                headers: {'User-Agent': 'spares-hub-app'});
+                            if (res.statusCode >= 200 && res.statusCode < 300) {
+                              final data =
+                                  jsonDecode(res.body) as Map<String, dynamic>;
+                              final disp =
+                                  data['display_name']?.toString() ?? '';
+                              setState(() {
+                                addrCtrl.text = disp;
+                              });
+                            }
+                          } catch (_) {}
+                        },
+                        child: const Text('Reverse Geocode'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: selected == null
+                  ? null
+                  : () async {
+                      final lat = double.tryParse(latCtrl.text);
+                      final lon = double.tryParse(lonCtrl.text);
+                      if (lat == null || lon == null) return;
+                      String msg = 'Location saved';
+                      try {
+                        await authService.updateUserLocation(
+                            selected!.id, lat, lon);
+                      } catch (_) {
+                        msg = 'Saved locally; server path missing';
+                      }
+                      if (addrCtrl.text.trim().isNotEmpty) {
+                        try {
+                          await authService.updateUserAddress(
+                              selected!.id, addrCtrl.text.trim());
+                        } catch (_) {}
+                      }
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(msg)),
+                        );
+                      }
+                    },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -171,6 +171,48 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/users/{userId}/address")
+    public ResponseEntity<?> updateUserAddress(@PathVariable Long userId, @RequestBody Map<String, String> body) {
+        String address = body.getOrDefault("address", "");
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setAddress(address);
+        userRepository.save(user);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/users/{userId}/location")
+    public ResponseEntity<?> updateUserLocation(@PathVariable Long userId, @RequestBody Map<String, Double> body) {
+        Double lat = body.get("latitude");
+        Double lon = body.get("longitude");
+        if (lat == null || lon == null) {
+            return ResponseEntity.badRequest().body("Latitude and longitude are required");
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setLatitude(lat);
+        user.setLongitude(lon);
+        userRepository.save(user);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/users/update-location")
+    public ResponseEntity<?> updateUserLocationBody(@RequestBody Map<String, Object> body) {
+        Object idObj = body.get("userId");
+        Double lat = body.get("latitude") instanceof Number ? ((Number) body.get("latitude")).doubleValue() : null;
+        Double lon = body.get("longitude") instanceof Number ? ((Number) body.get("longitude")).doubleValue() : null;
+        if (!(idObj instanceof Number) || lat == null || lon == null) {
+            return ResponseEntity.badRequest().body("userId, latitude and longitude are required");
+        }
+        Long userId = ((Number) idObj).longValue();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setLatitude(lat);
+        user.setLongitude(lon);
+        userRepository.save(user);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/orders")
     public ResponseEntity<List<OrderDto>> getAllOrders() {
         return ResponseEntity.ok(orderService.getAllOrders());

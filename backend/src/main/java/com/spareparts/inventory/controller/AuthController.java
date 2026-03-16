@@ -65,9 +65,17 @@ public class AuthController {
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
         String email = body.get("email");
+        String purpose = body.getOrDefault("purpose", "login").toLowerCase();
         
         if (email == null || !email.contains("@")) {
             return ResponseEntity.badRequest().body(new MessageResponse("Invalid email address."));
+        }
+
+        // For login/reset flows, ensure user exists
+        if ("login".equals(purpose) || "reset".equals(purpose)) {
+            if (!userRepository.existsByEmail(email)) {
+                return ResponseEntity.status(404).body(new MessageResponse("User does not exist."));
+            }
         }
 
         // Simple Rate Limiting
@@ -320,5 +328,28 @@ public class AuthController {
                 user.getName(),
                 user.getEmail(),
                 roles));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String otp = body.get("otp");
+        String newPassword = body.get("newPassword");
+        if (email == null || otp == null || newPassword == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Email, OTP and newPassword are required."));
+        }
+        String storedOtp = OTP_STORAGE.get(email);
+        if (storedOtp == null || !storedOtp.equals(otp)) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
+        }
+        java.util.Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(new MessageResponse("User not found with this email."));
+        }
+        User user = userOpt.get();
+        user.setPassword(encoder.encode(newPassword));
+        userRepository.save(user);
+        OTP_STORAGE.remove(email);
+        return ResponseEntity.ok(new MessageResponse("Password reset successfully."));
     }
 }

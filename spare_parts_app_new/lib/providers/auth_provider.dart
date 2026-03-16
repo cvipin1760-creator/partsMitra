@@ -109,6 +109,20 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateLocation(double latitude, double longitude) async {
+    if (_user != null) {
+      _isLoading = true;
+      notifyListeners();
+      try {
+        await _authService.updateUserLocation(_user!.id, latitude, longitude);
+        _user = await _authService.getCurrentUser();
+      } finally {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> changePassword(
       String currentPassword, String newPassword) async {
     if (_user != null) {

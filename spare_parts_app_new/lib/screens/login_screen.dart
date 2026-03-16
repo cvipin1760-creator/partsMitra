@@ -390,12 +390,68 @@ class _LoginScreenState extends State<LoginScreen> {
       if (msg.contains('Exception: ')) {
         msg = msg.replaceFirst('Exception: ', '');
       }
-      _showFeedback('Google Sign-In failed: $msg', isError: true);
+      bool suggestSetup =
+          msg.contains('ApiException: 10') || msg.contains('sign_in_failed');
+      if (suggestSetup) {
+        _showFeedback(
+            'Google Sign-In failed. Check Android SHA-1 and package name in Google Console. You can log in via OTP.',
+            isError: true);
+        await _promptEmailThenOtp();
+      } else {
+        _showFeedback('Google Sign-In failed: $msg', isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _promptEmailThenOtp() async {
+    final emailCtrl = TextEditingController(text: _emailController.text);
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Login via OTP'),
+        content: TextField(
+          controller: emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(labelText: 'Email'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = emailCtrl.text.trim();
+              final regex = RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$');
+              if (!regex.hasMatch(email)) {
+                _showFeedback('Enter a valid email address.', isError: true);
+                return;
+              }
+              try {
+                final ap = Provider.of<AuthProvider>(context, listen: false);
+                await ap.sendOtp(email, {});
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  _promptEnterOtp(email);
+                }
+              } catch (e) {
+                String em = e.toString();
+                if (em.startsWith('Exception: ')) {
+                  em = em.replaceFirst('Exception: ', '');
+                }
+                _showFeedback(em, isError: true);
+              }
+            },
+            child: const Text('Send OTP'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

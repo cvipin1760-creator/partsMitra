@@ -59,6 +59,35 @@ class Constants {
       String.fromEnvironment('FORCE_LOCAL_OTP', defaultValue: 'false');
   static bool get forceLocalOtp => localOtpOverride.toLowerCase() == 'true';
 
+  // -------------------------
+  // Configurable Auth Paths
+  // -------------------------
+  static const String resetPasswordPathOverride = String.fromEnvironment(
+      'RESET_PASSWORD_PATH',
+      defaultValue: '/auth/reset-password');
+  static const String altResetPasswordPathOverride = String.fromEnvironment(
+      'ALT_RESET_PASSWORD_PATH',
+      defaultValue: '/auth/password/reset');
+  static const String changePasswordPathOverride = String.fromEnvironment(
+      'CHANGE_PASSWORD_PATH',
+      defaultValue: '/auth/change-password');
+  static const String otpLoginPathOverride =
+      String.fromEnvironment('OTP_LOGIN_PATH', defaultValue: '/auth/otp-login');
+
+  static String get resetPasswordPath => resetPasswordPathOverride;
+  static String get altResetPasswordPath => altResetPasswordPathOverride;
+  static String get changePasswordPath => changePasswordPathOverride;
+  static String get otpLoginPath => otpLoginPathOverride;
+
+  static const String locationIdPathOverride = String.fromEnvironment(
+      'LOCATION_ID_PATH',
+      defaultValue: '/admin/users/{id}/location');
+  static const String locationBodyPathOverride = String.fromEnvironment(
+      'LOCATION_BODY_PATH',
+      defaultValue: '/admin/users/update-location');
+  static String get locationIdPath => locationIdPathOverride;
+  static String get locationBodyPath => locationBodyPathOverride;
+
   static const String roleRetailer = 'ROLE_RETAILER';
   static const String roleMechanic = 'ROLE_MECHANIC';
   static const String roleWholesaler = 'ROLE_WHOLESALER';

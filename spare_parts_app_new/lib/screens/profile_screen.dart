@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:io';
 import 'package:spare_parts_app/screens/edit_profile_screen.dart';
 import '../providers/auth_provider.dart';
@@ -148,6 +149,38 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _setCurrentLocation(
+      BuildContext context, AuthProvider authProvider) async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enable location services')));
+      return;
+    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permission denied')));
+        return;
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Location permissions permanently denied')));
+      return;
+    }
+    final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high));
+    await authProvider.updateLocation(pos.latitude, pos.longitude);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Location saved')));
+    }
   }
 
   @override
@@ -314,6 +347,16 @@ class ProfileScreen extends StatelessWidget {
                     user?.address ?? 'No address set',
                     isEditable: true,
                     onEdit: () => _showEditAddressDialog(context, authProvider),
+                  ),
+                  _buildProfileItem(
+                    context,
+                    Icons.my_location_rounded,
+                    'LOCATION',
+                    user?.latitude != null && user?.longitude != null
+                        ? '${user!.latitude!.toStringAsFixed(5)}, ${user.longitude!.toStringAsFixed(5)}'
+                        : 'Not set',
+                    isEditable: true,
+                    onEdit: () => _setCurrentLocation(context, authProvider),
                   ),
                   const SizedBox(height: 24),
                   const Text(
