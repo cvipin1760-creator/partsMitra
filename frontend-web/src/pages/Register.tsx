@@ -91,6 +91,18 @@ const Register = () => {
     );
   };
 
+  const handleGoogleLogin = async () => {
+    setMessage('');
+    setLoading(true);
+    try {
+      setMessage('Google SSO is currently being updated. Please use the form above.');
+    } catch (error: any) {
+      setMessage(error.message || 'Google login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background decorative elements */}
@@ -334,6 +346,32 @@ const Register = () => {
               )}
             </button>
           </form>
+
+          <div className="mt-8">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-100"></div>
+              </div>
+              <div className="relative flex justify-center text-xs font-bold uppercase tracking-widest">
+                <span className="px-4 bg-white text-gray-400">{t('login.or')}</span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 px-4 py-3.5 border border-gray-200 rounded-[1.25rem] text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-[0.98]"
+              >
+                <img
+                  className="h-5 w-5"
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt="Google"
+                />
+                {t('login.google')}
+              </button>
+            </div>
+          </div>
         </div>
 
         <p className="text-center text-sm font-medium text-gray-500">

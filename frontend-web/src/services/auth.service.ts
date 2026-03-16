@@ -80,6 +80,10 @@ const googleLogin = async (email: string, name: string) => {
   return response.data;
 };
 
+const resetPassword = async (email: string, otp: string, newPassword: string) => {
+  return api.post('/auth/reset-password', { email, otp, newPassword });
+};
+
 const getRoles = () => {
   const user = getCurrentUser();
   return user ? user.roles : [];
@@ -101,6 +105,7 @@ const AuthService = {
   loginWithOtp,
   logout,
   googleLogin,
+  resetPassword,
   getRoles,
   getCurrentUser
 };

@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-r
 import AuthService from './services/auth.service';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from './pages/AdminDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import WholesalerDashboard from './pages/WholesalerDashboard';
@@ -32,7 +33,7 @@ const App: React.FC = () => {
   };
 
   const isAdminOrSuper = currentUser?.roles?.includes(ROLE_ADMIN) || currentUser?.roles?.includes(ROLE_SUPER_MANAGER);
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password';
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -118,6 +119,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<MobileDashboard />} />
           <Route
             path="/track/:id"
