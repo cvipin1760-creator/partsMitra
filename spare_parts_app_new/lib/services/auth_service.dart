@@ -51,7 +51,13 @@ class AuthService {
         final id = (json['id'] as num).toInt();
         final emailVal = json['email'] as String;
         final name = json['username'] ?? json['name'] ?? emailVal;
-        final roles = (json['roles'] as List).map((e) => e.toString()).toList();
+
+        // Backend roles might be objects like {id: 1, name: "ROLE_MECHANIC"} or just strings
+        final roles = (json['roles'] as List).map((e) {
+          if (e is Map && e['name'] != null) return e['name'].toString();
+          return e.toString();
+        }).toList();
+
         final status = (json['status'] ?? 'ACTIVE').toString();
         if (status != 'ACTIVE') {
           throw Exception('Your account is not active yet.');
@@ -63,13 +69,17 @@ class AuthService {
           phone: json['phone'],
           token: token.toString(),
           roles: roles,
-          address: null,
-          shopImagePath: null,
+          address: json['address'],
+          shopImagePath: json['shopImagePath'],
           status: status,
           phoneVerified:
               json['phoneVerified'] == true || json['phone_verified'] == 1,
-          latitude: null,
-          longitude: null,
+          latitude: json['latitude'] != null
+              ? (json['latitude'] as num).toDouble()
+              : null,
+          longitude: json['longitude'] != null
+              ? (json['longitude'] as num).toDouble()
+              : null,
         );
         final prefs = await _prefs();
         await prefs.setString('user', jsonEncode(user.toJson()));
@@ -145,7 +155,13 @@ class AuthService {
         final id = (json['id'] as num).toInt();
         final emailVal = json['email'] as String;
         final name = json['username'] ?? json['name'] ?? emailVal;
-        final roles = (json['roles'] as List).map((e) => e.toString()).toList();
+
+        // Backend roles might be objects like {id: 1, name: "ROLE_MECHANIC"} or just strings
+        final roles = (json['roles'] as List).map((e) {
+          if (e is Map && e['name'] != null) return e['name'].toString();
+          return e.toString();
+        }).toList();
+
         final status = (json['status'] ?? 'ACTIVE').toString();
         if (status != 'ACTIVE') {
           throw Exception('Your account is not active yet.');
@@ -317,7 +333,7 @@ class AuthService {
     if (role == Constants.roleRetailer) return 'retailer';
     if (role == Constants.roleMechanic) return 'mechanic';
     if (role == Constants.roleStaff) return 'staff';
-    if (role == Constants.roleSuperManager) return 'super_manager';
+    if (role == Constants.roleSuperManager) return 'supermanager';
     return 'mechanic';
   }
 
@@ -605,13 +621,15 @@ class AuthService {
           return 'server';
         } else {
           final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-          final msg = decoded is Map ? (decoded['message'] ?? res.body) : res.body;
+          final msg =
+              decoded is Map ? (decoded['message'] ?? res.body) : res.body;
           throw Exception(msg.toString());
         }
       } catch (e) {
         if (registrationData.isNotEmpty) {
           // Signup: allow local fallback
-          if (kDebugMode) debugPrint('Remote OTP failed, falling back (signup): $e');
+          if (kDebugMode)
+            debugPrint('Remote OTP failed, falling back (signup): $e');
         } else {
           // Login/reset: do not fallback; propagate error
           rethrow;
@@ -657,7 +675,8 @@ class AuthService {
           return;
         } else {
           final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-          final msg = decoded is Map ? (decoded['message'] ?? res.body) : res.body;
+          final msg =
+              decoded is Map ? (decoded['message'] ?? res.body) : res.body;
           throw Exception(msg.toString());
         }
       } else {

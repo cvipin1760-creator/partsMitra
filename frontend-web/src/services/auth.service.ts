@@ -16,7 +16,9 @@ const normalizeRoles = (roles: string[] | undefined) => {
   });
 };
 
-const register = (name: string, email: string, password: string, role: string, phone: string, countryCode: string, otp: string, address: string) => {
+const register = async (name: string, email: string, password: string, role: string, phone: string, countryCode: string, otp: string, address: string) => {
+  console.log('AuthService.register called with:', { name, email, role, phone, otp });
+  
   // Normalize role for request
   let finalRole = role;
   const roleLower = role.toLowerCase();
@@ -29,16 +31,23 @@ const register = (name: string, email: string, password: string, role: string, p
   else if (roleLower.includes('staff')) finalRole = ROLE_STAFF;
   else if (roleLower.includes('supermanager') || roleLower.includes('super_manager')) finalRole = ROLE_SUPER_MANAGER;
 
-  return api.post('/auth/signup', {
-    name,
-    email,
-    password,
-    role: finalRole,
-    phone,
-    countryCode,
-    otp,
-    address,
-  });
+  try {
+    const response = await api.post('/auth/signup', {
+      name,
+      email,
+      password,
+      role: finalRole,
+      phone,
+      countryCode,
+      otp,
+      address,
+    });
+    console.log('AuthService.register response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('AuthService.register error:', error);
+    throw error;
+  }
 };
 
 const sendOtp = (email: string, purpose: string = 'login') => {

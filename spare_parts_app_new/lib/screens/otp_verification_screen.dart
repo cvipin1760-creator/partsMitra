@@ -2,8 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-
-import 'package:spare_parts_app/services/auth_exceptions.dart';
+import '../services/auth_exceptions.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -89,7 +88,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             Text(
                               'Enter the 6-digit code sent to\n${widget.email}',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.grey.shade600),
                             ),
                             const SizedBox(height: 32),
 
@@ -104,18 +104,22 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               ),
                               decoration: InputDecoration(
                                 hintText: '000000',
-                                hintStyle: TextStyle(color: Colors.grey.shade300),
+                                hintStyle:
+                                    TextStyle(color: Colors.grey.shade300),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(color: Colors.grey.shade200),
+                                  borderSide:
+                                      BorderSide(color: Colors.grey.shade200),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(color: Colors.grey.shade200),
+                                  borderSide:
+                                      BorderSide(color: Colors.grey.shade200),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide(color: Colors.green.shade600, width: 2),
+                                  borderSide: BorderSide(
+                                      color: Colors.green.shade600, width: 2),
                                 ),
                                 filled: true,
                                 fillColor: Colors.grey.shade50,
@@ -138,98 +142,136 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: _isLoading ? null : () async {
-                                  if (_formKey.currentState!.validate()) {
-                                    setState(() => _isLoading = true);
-                                    final authProvider = Provider.of<AuthProvider>(
-                                      context,
-                                      listen: false,
-                                    );
-                                    try {
-                                      if (widget.registrationData != null) {
-                                        // Registration logic
-                                        final success = await authProvider.register(
-                                          widget.registrationData!['name'],
-                                          widget.registrationData!['email'],
-                                          widget.registrationData!['password'],
-                                          widget.registrationData!['role'],
-                                          widget.registrationData!['phone'] ?? '',
-                                          widget.registrationData!['address'] ?? '',
-                                          latitude: widget.registrationData!['latitude'],
-                                          longitude: widget.registrationData!['longitude'],
-                                          otp: _otpController.text,
-                                        );
-                                        if (success) {
-                                          showDialog(
-                                            context: context,
-                                            barrierDismissible: false,
-                                            builder: (ctx) => AlertDialog(
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          20)),
-                                              title: const Row(
-                                                children: [
-                                                  Icon(Icons.check_circle,
-                                                      color: Colors.green),
-                                                  SizedBox(width: 10),
-                                                  Text('Completed'),
-                                                ],
-                                              ),
-                                              content: const Text(
-                                                  'Registration completed successfully! Please login to continue.'),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.of(ctx).pop();
-                                                    Navigator.of(context)
-                                                        .pushNamedAndRemoveUntil(
-                                                            '/',
-                                                            (route) => false);
-                                                  },
-                                                  child: const Text('OK'),
-                                                ),
-                                              ],
-                                            ),
+                                onPressed: _isLoading
+                                    ? null
+                                    : () async {
+                                        if (_formKey.currentState!.validate()) {
+                                          setState(() => _isLoading = true);
+                                          final authProvider =
+                                              Provider.of<AuthProvider>(
+                                            context,
+                                            listen: false,
                                           );
+                                          try {
+                                            if (widget.registrationData !=
+                                                null) {
+                                              // Registration logic
+                                              final success =
+                                                  await authProvider.register(
+                                                widget
+                                                    .registrationData!['name'],
+                                                widget
+                                                    .registrationData!['email'],
+                                                widget.registrationData![
+                                                    'password'],
+                                                widget
+                                                    .registrationData!['role'],
+                                                widget.registrationData![
+                                                        'phone'] ??
+                                                    '',
+                                                widget.registrationData![
+                                                        'address'] ??
+                                                    '',
+                                                latitude:
+                                                    widget.registrationData![
+                                                        'latitude'],
+                                                longitude:
+                                                    widget.registrationData![
+                                                        'longitude'],
+                                                otp: _otpController.text,
+                                              );
+                                              if (success) {
+                                                showDialog(
+                                                  context: context,
+                                                  barrierDismissible: false,
+                                                  builder: (ctx) => AlertDialog(
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        20)),
+                                                    title: const Row(
+                                                      children: [
+                                                        Icon(Icons.check_circle,
+                                                            color:
+                                                                Colors.green),
+                                                        SizedBox(width: 10),
+                                                        Text('Completed'),
+                                                      ],
+                                                    ),
+                                                    content: const Text(
+                                                        'Registration completed successfully! Please login to continue.'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.of(ctx)
+                                                              .pop();
+                                                          Navigator.of(context)
+                                                              .pushNamedAndRemoveUntil(
+                                                                  '/',
+                                                                  (route) =>
+                                                                      false);
+                                                        },
+                                                        child: const Text('OK'),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }
+                                            } else {
+                                              // Standalone verification
+                                              final success =
+                                                  await authProvider.verifyOtp(
+                                                _otpController.text,
+                                              );
+                                              if (success) {
+                                                _showFeedback(
+                                                    'OTP verified successfully!');
+                                                Navigator.of(context).pop(true);
+                                              } else {
+                                                _showFeedback('Invalid OTP',
+                                                    isError: true);
+                                              }
+                                            }
+                                          } catch (e) {
+                                            String msg = e.toString();
+                                            if (msg.startsWith('Exception: ')) {
+                                              msg = msg.replaceFirst(
+                                                  'Exception: ', '');
+                                            }
+                                            _showFeedback(msg, isError: true);
+                                          } finally {
+                                            if (mounted)
+                                              setState(
+                                                  () => _isLoading = false);
+                                          }
                                         }
-                                      } else {
-                                        // Standalone verification
-                                        final success = await authProvider.verifyOtp(
-                                          _otpController.text,
-                                        );
-                                        if (success) {
-                                          _showFeedback('OTP verified successfully!');
-                                          Navigator.of(context).pop(true);
-                                        } else {
-                                          _showFeedback('Invalid OTP', isError: true);
-                                        }
-                                      }
-                                    } catch (e) {
-                                      _showFeedback(e.toString(), isError: true);
-                                    } finally {
-                                      if (mounted) setState(() => _isLoading = false);
-                                    }
-                                  }
-                                },
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green.shade600,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   elevation: 4,
                                 ),
-                                child: _isLoading 
-                                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Text(
-                                      'Verify & Continue',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white))
+                                    : const Text(
+                                        'Verify & Continue',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -239,7 +281,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               onPressed: _isLoading
                                   ? null
                                   : () async {
-                                      final authProvider = Provider.of<AuthProvider>(
+                                      final authProvider =
+                                          Provider.of<AuthProvider>(
                                         context,
                                         listen: false,
                                       );
@@ -247,7 +290,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                         widget.email,
                                         widget.registrationData ?? {},
                                       );
-                                      final via = source == 'server' ? 'SMS/Server' : 'Email';
+                                      final via = source == 'server'
+                                          ? 'SMS/Server'
+                                          : 'Email';
                                       _showFeedback('OTP resent via $via');
                                     },
                               child: Text(

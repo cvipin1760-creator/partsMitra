@@ -62,16 +62,30 @@ const Register = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('handleRegister started. otpSent:', otpSent, 'otp:', otp);
+    
     if (!otpSent) {
-      setMessage(t('login.otp') + ' ' + t('common.error'));
+      setMessage('Please click "Send OTP" first.');
       return;
     }
+    
+    if (!otp || otp.length !== 6) {
+      setMessage('Please enter the 6-digit OTP you received.');
+      return;
+    }
+
+    if (!name || !email || !password || !phone) {
+      setMessage('Please fill in all required fields.');
+      return;
+    }
+
     setMessage('');
     setLoading(true);
 
     try {
       console.log('Registering user with:', { name, email, role, phone, otp });
-      await AuthService.register(name, email, password, role, phone, '', otp, address);
+      const result = await AuthService.register(name, email, password, role, phone, '', otp, address);
+      console.log('Registration success result:', result);
       
       setMessage(`${t('common.success')}! Registration completed successfully. Redirecting to login...`);
       setLoading(false);
@@ -79,7 +93,7 @@ const Register = () => {
         navigate('/login');
       }, 3000);
     } catch (error: any) {
-      console.error('Registration failed:', error);
+      console.error('Registration error details:', error);
       const resMessage =
         (error.response &&
           error.response.data &&
@@ -88,7 +102,7 @@ const Register = () => {
         error.toString();
 
       setLoading(false);
-      setMessage(resMessage);
+      setMessage(`Registration failed: ${resMessage}`);
     }
   };
 

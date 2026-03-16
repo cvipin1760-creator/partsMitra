@@ -153,6 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _isLoading = true);
     try {
+      debugPrint('RegisterScreen: Starting registration process...');
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       final registrationData = {
@@ -167,11 +168,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       };
 
       final target = _isEmailRegistration ? email : phone;
-      await authProvider.sendOtp(target, registrationData);
+      debugPrint('RegisterScreen: Sending OTP to $target...');
+      final source = await authProvider.sendOtp(target, registrationData);
+      debugPrint('RegisterScreen: OTP source: $source');
 
       if (mounted) {
         _showFeedback(
             'OTP sent to your ${_isEmailRegistration ? "email" : "mobile"}.');
+        debugPrint('RegisterScreen: Navigating to OtpVerificationScreen...');
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => OtpVerificationScreen(
@@ -182,7 +186,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } catch (e) {
-      _showFeedback('Failed to send OTP: ${e.toString()}', isError: true);
+      debugPrint('RegisterScreen: Error in registration flow: $e');
+      String msg = e.toString();
+      if (msg.startsWith('Exception: ')) {
+        msg = msg.replaceFirst('Exception: ', '');
+      }
+      _showFeedback('Failed to send OTP: $msg', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
