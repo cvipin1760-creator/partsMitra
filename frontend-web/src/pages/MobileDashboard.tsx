@@ -14,7 +14,9 @@ import {
   ChevronRight,
   Search,
   Bell,
-  Menu
+  Menu,
+  Settings,
+  Plus
 } from 'lucide-react';
 import Skeleton from '../components/Skeleton';
 import { 
