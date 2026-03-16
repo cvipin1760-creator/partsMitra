@@ -1220,50 +1220,52 @@ const AdminDashboard = () => {
                 Deleted Users
               </h3>
             </div>
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50/30">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
-                {deletedUsers.length > 0 ? deletedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-bold text-gray-900">{user.name}</div>
-                      <div className="text-xs text-gray-500">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs font-bold text-gray-600">{user.role?.name || user.role}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => restoreUser(user.id)}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
-                        >
-                          <RotateCcw size={16} />
-                          Restore
-                        </button>
-                        <button
-                          onClick={() => permanentDeleteUser(user.id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
-                        >
-                          <Trash2 size={16} />
-                          Delete Permanent
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )) : (
+            <div className="max-h-[28rem] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-gray-50/30">
                   <tr>
-                    <td colSpan={3} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">No deleted users found</td>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {deletedUsers.length > 0 ? deletedUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-bold text-gray-900">{user.name}</div>
+                        <div className="text-xs text-gray-500">{user.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs font-bold text-gray-600">{user.role?.name || user.role}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => restoreUser(user.id)}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
+                          >
+                            <RotateCcw size={16} />
+                            Restore
+                          </button>
+                          <button
+                            onClick={() => permanentDeleteUser(user.id)}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
+                          >
+                            <Trash2 size={16} />
+                            Delete Permanent
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">No deleted users found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Deleted Products */}
@@ -1283,49 +1285,51 @@ const AdminDashboard = () => {
                 </button>
               )}
             </div>
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50/30">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Part Number</th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
-                {deletedProducts.length > 0 ? deletedProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-bold text-gray-900">{product.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{product.partNumber}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => restoreProduct(product.id)}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
-                        >
-                          <RotateCcw size={16} />
-                          Restore
-                        </button>
-                        <button
-                          onClick={() => permanentDeleteProduct(product.id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
-                        >
-                          <Trash2 size={16} />
-                          Delete Permanent
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )) : (
+            <div className="max-h-[28rem] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-gray-50/30">
                   <tr>
-                    <td colSpan={3} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">No deleted products found</td>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Part Number</th>
+                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {deletedProducts.length > 0 ? deletedProducts.map((product) => (
+                    <tr key={product.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-bold text-gray-900">{product.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{product.partNumber}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => restoreProduct(product.id)}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
+                          >
+                            <RotateCcw size={16} />
+                            Restore
+                          </button>
+                          <button
+                            onClick={() => permanentDeleteProduct(product.id)}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
+                          >
+                            <Trash2 size={16} />
+                            Delete Permanent
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">No deleted products found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Deleted Orders */}
@@ -1336,53 +1340,55 @@ const AdminDashboard = () => {
                 Deleted Orders
               </h3>
             </div>
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50/30">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Order ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
-                {deletedOrders.length > 0 ? deletedOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs font-black text-primary-700 bg-primary-50 px-2 py-1 rounded-md">#{order.id}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">{order.customerName}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-black text-gray-900">₹{order.totalAmount.toLocaleString()}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => restoreOrder(order.id)}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
-                        >
-                          <RotateCcw size={16} />
-                          Restore
-                        </button>
-                        <button
-                          onClick={() => permanentDeleteOrder(order.id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
-                        >
-                          <Trash2 size={16} />
-                          Delete Permanent
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )) : (
+            <div className="max-h-[28rem] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-gray-50/30">
                   <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">No deleted orders found</td>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Order ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {deletedOrders.length > 0 ? deletedOrders.map((order) => (
+                    <tr key={order.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs font-black text-primary-700 bg-primary-50 px-2 py-1 rounded-md">#{order.id}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-gray-900">{order.customerName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-black text-gray-900">₹{order.totalAmount.toLocaleString()}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => restoreOrder(order.id)}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center gap-2 text-xs font-bold"
+                          >
+                            <RotateCcw size={16} />
+                            Restore
+                          </button>
+                          <button
+                            onClick={() => permanentDeleteOrder(order.id)}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold"
+                          >
+                            <Trash2 size={16} />
+                            Delete Permanent
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">No deleted orders found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

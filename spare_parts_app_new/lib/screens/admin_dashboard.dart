@@ -34,6 +34,7 @@ import '../utils/image_utils.dart';
 import 'profile_screen.dart';
 import 'package:translator/translator.dart';
 import 'package:open_file/open_file.dart';
+import '../widgets/product_grid_item.dart';
 import '../widgets/ai_chatbot_widget.dart';
 import 'admin_settings_screen.dart';
 import '../services/settings_service.dart';
@@ -295,13 +296,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                const ListTile(
-                  title: Text(
-                    'Admin Menu',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                UserAccountsDrawerHeader(
+                  accountName: Text(auth.user?.name ?? 'Admin'),
+                  accountEmail: Text(auth.user?.email ?? ''),
+                  currentAccountPicture: const CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.person, color: Colors.redAccent),
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSuperManager
+                        ? Colors.deepPurpleAccent
+                        : Colors.redAccent,
                   ),
                 ),
-                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.dashboard),
                   title: const Text('Overview'),
@@ -530,14 +537,18 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
           children: [
             const Text(
               'Dashboard Overview',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: 20),
             LayoutBuilder(
               builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 360;
-                final crossAxisCount = isNarrow ? 1 : 2;
-                final aspect = isNarrow ? 1.1 : 1.3;
+                final isVeryNarrow = constraints.maxWidth < 320;
+                final crossAxisCount = isVeryNarrow ? 1 : 2;
+                final aspect = crossAxisCount == 2 ? 1.25 : 1.1;
                 return GridView.count(
                   crossAxisCount: crossAxisCount,
                   shrinkWrap: true,
@@ -631,15 +642,15 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.08),
-            blurRadius: 20,
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 16,
             offset: const Offset(0, 8),
           ),
         ],
@@ -649,36 +660,31 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 20),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1A1C1E),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade500,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+            ),
           ),
         ],
       ),
@@ -693,6 +699,13 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -715,6 +728,46 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
         ),
         trailing:
             Icon(Icons.chevron_right_rounded, color: Colors.grey.shade300),
+      ),
+    );
+  }
+
+  Widget _buildHeaderChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 16, color: Colors.black87),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1265,8 +1318,12 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
                               .format(DateTime.parse(order.deliveredAt!))
                           : null;
                       return Card(
+                        elevation: 2,
                         margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
+                            horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: ExpansionTile(
                           title: Text('Order #${order.id} - ${order.status}'),
                           subtitle: Text('Date: ${order.createdAt}'),
@@ -2250,10 +2307,12 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
     if (products.isEmpty) {
       return const Center(child: Text('No products found'));
     }
+    // List view layout for admin page
     return ListView.builder(
       itemCount: products.length,
       itemBuilder: (ctx, i) {
         final p = products[i];
+        final isSelected = _selectedIds.contains(p.id);
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           elevation: 2,
