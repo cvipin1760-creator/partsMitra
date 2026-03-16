@@ -17,6 +17,7 @@ import OrderStatus from './pages/OrderStatus';
 import { ROLE_ADMIN, ROLE_SUPER_MANAGER, ROLE_WHOLESALER, ROLE_STAFF } from './services/constants';
 import AIChatbot from './components/AIChatbot';
 import AdminCategories from './pages/AdminCategories';
+import MobileDashboard from './pages/MobileDashboard';
 
 const App: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -113,6 +114,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/dashboard" element={<MobileDashboard />} />
           <Route
             path="/track/:id"
             element={

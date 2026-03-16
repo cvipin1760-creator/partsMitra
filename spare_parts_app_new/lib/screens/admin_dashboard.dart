@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'voice_training_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -234,190 +235,215 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final isAdmin = auth.user?.roles.contains(Constants.roleAdmin) ?? false;
     final hasAdminPrivileges = isSuperManager || isAdmin;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          isSuperManager ? 'Super Manager Panel' : 'Admin Panel',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor:
-            isSuperManager ? Colors.deepPurpleAccent : Colors.redAccent,
-        foregroundColor: Colors.white,
-        actions: [
-          const CartBadge(),
-          const NotificationBadge(),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminSettingsScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_active),
-            onPressed: _sendNotification,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => auth.logout(),
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: SafeArea(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const ListTile(
-                title: Text(
-                  'Admin Menu',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.dashboard),
-                title: const Text('Overview'),
-                selected: _selectedIndex == 0,
-                onTap: () {
-                  setState(() => _selectedIndex = 0);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.list_alt),
-                title: const Text('Orders'),
-                selected: _selectedIndex == 1,
-                onTap: () {
-                  setState(() => _selectedIndex = 1);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.assignment),
-                title: const Text('Requests'),
-                selected: _selectedIndex == 2,
-                onTap: () {
-                  setState(() => _selectedIndex = 2);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.inventory),
-                title: const Text('Products'),
-                selected: _selectedIndex == 3,
-                onTap: () {
-                  setState(() => _selectedIndex = 3);
-                  Navigator.pop(context);
-                },
-              ),
-              if (hasAdminPrivileges)
-                ListTile(
-                  leading: const Icon(Icons.category),
-                  title: const Text('Categories'),
-                  selected: _selectedIndex == 4,
-                  onTap: () {
-                    setState(() => _selectedIndex = 4);
-                    Navigator.pop(context);
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.bar_chart),
-                title: const Text('Reports'),
-                selected: _selectedIndex == 5,
-                onTap: () {
-                  setState(() => _selectedIndex = 5);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.receipt),
-                title: const Text('Invoicing'),
-                selected: _selectedIndex == 6,
-                onTap: () {
-                  setState(() => _selectedIndex = 6);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.people),
-                title: const Text('Users'),
-                selected: _selectedIndex == 7,
-                onTap: () {
-                  setState(() => _selectedIndex = 7);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.restore_from_trash),
-                title: const Text('Recycle Bin'),
-                selected: _selectedIndex == 8,
-                onTap: () {
-                  setState(() => _selectedIndex = 8);
-                  Navigator.pop(context);
-                },
-              ),
-              if (_voiceEnabled)
-                ListTile(
-                  leading: const Icon(Icons.record_voice_over),
-                  title: const Text('Voice Training'),
-                  selected: _selectedIndex == 9,
-                  onTap: () {
-                    setState(() => _selectedIndex = 9);
-                    Navigator.pop(context);
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text('Profile'),
-                selected: _selectedIndex == 10,
-                onTap: () {
-                  setState(() => _selectedIndex = 10);
-                  Navigator.pop(context);
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.notifications_active),
-                title: const Text('Send Notification'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _sendNotification();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Settings'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AdminSettingsScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title:
-                    const Text('Logout', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  auth.logout();
-                },
-              ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Exit App?'),
+            content: const Text('Do you want to exit the application?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('No')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Yes')),
             ],
           ),
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            isSuperManager ? 'Super Manager Panel' : 'Admin Panel',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor:
+              isSuperManager ? Colors.deepPurpleAccent : Colors.redAccent,
+          foregroundColor: Colors.white,
+          actions: [
+            const CartBadge(),
+            const NotificationBadge(),
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const AdminSettingsScreen()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.notifications_active),
+              onPressed: _sendNotification,
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () => auth.logout(),
+            ),
+          ],
         ),
-      ),
-      body: Stack(
-        children: [
-          _widgetOptions[_selectedIndex],
-          if (_aiEnabled) const AIChatbotWidget(),
-        ],
+        drawer: Drawer(
+          child: SafeArea(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Admin Menu',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.dashboard),
+                  title: const Text('Overview'),
+                  selected: _selectedIndex == 0,
+                  onTap: () {
+                    setState(() => _selectedIndex = 0);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.list_alt),
+                  title: const Text('Orders'),
+                  selected: _selectedIndex == 1,
+                  onTap: () {
+                    setState(() => _selectedIndex = 1);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.assignment),
+                  title: const Text('Requests'),
+                  selected: _selectedIndex == 2,
+                  onTap: () {
+                    setState(() => _selectedIndex = 2);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.inventory),
+                  title: const Text('Products'),
+                  selected: _selectedIndex == 3,
+                  onTap: () {
+                    setState(() => _selectedIndex = 3);
+                    Navigator.pop(context);
+                  },
+                ),
+                if (hasAdminPrivileges)
+                  ListTile(
+                    leading: const Icon(Icons.category),
+                    title: const Text('Categories'),
+                    selected: _selectedIndex == 4,
+                    onTap: () {
+                      setState(() => _selectedIndex = 4);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.bar_chart),
+                  title: const Text('Reports'),
+                  selected: _selectedIndex == 5,
+                  onTap: () {
+                    setState(() => _selectedIndex = 5);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.receipt),
+                  title: const Text('Invoicing'),
+                  selected: _selectedIndex == 6,
+                  onTap: () {
+                    setState(() => _selectedIndex = 6);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.people),
+                  title: const Text('Users'),
+                  selected: _selectedIndex == 7,
+                  onTap: () {
+                    setState(() => _selectedIndex = 7);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.restore_from_trash),
+                  title: const Text('Recycle Bin'),
+                  selected: _selectedIndex == 8,
+                  onTap: () {
+                    setState(() => _selectedIndex = 8);
+                    Navigator.pop(context);
+                  },
+                ),
+                if (_voiceEnabled)
+                  ListTile(
+                    leading: const Icon(Icons.record_voice_over),
+                    title: const Text('Voice Training'),
+                    selected: _selectedIndex == 9,
+                    onTap: () {
+                      setState(() => _selectedIndex = 9);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text('Profile'),
+                  selected: _selectedIndex == 10,
+                  onTap: () {
+                    setState(() => _selectedIndex = 10);
+                    Navigator.pop(context);
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.notifications_active),
+                  title: const Text('Send Notification'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _sendNotification();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings),
+                  title: const Text('Settings'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.red),
+                  title:
+                      const Text('Logout', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    auth.logout();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: Stack(
+          children: [
+            _widgetOptions[_selectedIndex],
+            if (_aiEnabled) const AIChatbotWidget(),
+          ],
+        ),
       ),
     );
   }

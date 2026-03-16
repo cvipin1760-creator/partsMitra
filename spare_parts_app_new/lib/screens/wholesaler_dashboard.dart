@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'wholesaler_shop_screen.dart';
@@ -37,66 +38,90 @@ class _WholesalerDashboardState extends State<WholesalerDashboard> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Spares Hub'),
-            Text(
-              'Wholesaler Dashboard',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.8),
-                fontWeight: FontWeight.normal,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Exit App?'),
+            content: const Text('Do you want to exit the application?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('No')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Yes')),
+            ],
+          ),
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Spares Hub'),
+              Text(
+                'Wholesaler Dashboard',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.8),
+                  fontWeight: FontWeight.normal,
+                ),
               ),
+            ],
+          ),
+          backgroundColor: Colors.purple.shade700,
+          actions: [
+            const CartBadge(),
+            const NotificationBadge(),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: FutureBuilder<bool>(
+          future: SettingsService.isAiChatbotEnabled(),
+          builder: (context, snap) {
+            final ai = snap.data ?? true;
+            return Stack(
+              children: [
+                _widgetOptions.elementAt(_selectedIndex),
+                if (ai) const AIChatbotWidget(),
+              ],
+            );
+          },
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: _onItemTapped,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.shopping_bag_outlined),
+              selectedIcon: Icon(Icons.shopping_bag),
+              label: 'Shop',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined),
+              selectedIcon: Icon(Icons.bar_chart),
+              label: 'Sales',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.history_outlined),
+              selectedIcon: Icon(Icons.history),
+              label: 'History',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
             ),
           ],
         ),
-        backgroundColor: Colors.purple.shade700,
-        actions: [
-          const CartBadge(),
-          const NotificationBadge(),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: FutureBuilder<bool>(
-        future: SettingsService.isAiChatbotEnabled(),
-        builder: (context, snap) {
-          final ai = snap.data ?? true;
-          return Stack(
-            children: [
-              _widgetOptions.elementAt(_selectedIndex),
-              if (ai) const AIChatbotWidget(),
-            ],
-          );
-        },
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.shopping_bag_outlined),
-            selectedIcon: Icon(Icons.shopping_bag),
-            label: 'Shop',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Sales',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'History',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
