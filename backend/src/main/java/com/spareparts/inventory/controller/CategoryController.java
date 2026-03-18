@@ -1,5 +1,6 @@
 package com.spareparts.inventory.controller;
 
+import com.spareparts.inventory.dto.CategorySimpleDto;
 import com.spareparts.inventory.entity.Category;
 import com.spareparts.inventory.dto.ProductDto;
 import com.spareparts.inventory.entity.Product;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,13 +24,48 @@ public class CategoryController {
     @Autowired
     private ProductRepository productRepository;
 
+    private CategorySimpleDto convertToDto(Category c) {
+        if (c == null) return null;
+        CategorySimpleDto dto = new CategorySimpleDto();
+        dto.setId(c.getId());
+        dto.setName(c.getName());
+        dto.setDescription(c.getDescription());
+        dto.setImagePath(c.getImagePath());
+        dto.setImageLink(c.getImageLink());
+        if (c.getParent() != null) {
+            dto.setParentId(c.getParent().getId());
+            dto.setParent(new CategorySimpleDto.ParentCategoryDto(c.getParent().getId(), c.getParent().getName()));
+        }
+        if (c.getSubCategories() != null && !c.getSubCategories().isEmpty()) {
+            dto.setSubCategories(c.getSubCategories().stream()
+                    .map(sub -> {
+                        CategorySimpleDto subDto = new CategorySimpleDto();
+                        subDto.setId(sub.getId());
+                        subDto.setName(sub.getName());
+                        subDto.setDescription(sub.getDescription());
+                        subDto.setImagePath(sub.getImagePath());
+                        subDto.setImageLink(sub.getImageLink());
+                        subDto.setParentId(c.getId());
+                        subDto.setParent(new CategorySimpleDto.ParentCategoryDto(c.getId(), c.getName()));
+                        return subDto;
+                    })
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setSubCategories(new ArrayList<>());
+        }
+        return dto;
+    }
+
     @GetMapping
-    public ResponseEntity<List<Category>> list(@RequestParam(value = "rootsOnly", required = false, defaultValue = "false") boolean rootsOnly) {
+    public ResponseEntity<List<CategorySimpleDto>> list(@RequestParam(value = "rootsOnly", required = false, defaultValue = "false") boolean rootsOnly) {
         try {
+            List<Category> categories;
             if (rootsOnly) {
-                return ResponseEntity.ok(categoryRepository.findByParentIsNullAndDeletedFalse());
+                categories = categoryRepository.findByParentIsNullAndDeletedFalse();
+            } else {
+                categories = categoryRepository.findByDeletedFalse();
             }
-            return ResponseEntity.ok(categoryRepository.findByDeletedFalse());
+            return ResponseEntity.ok(categories.stream().map(this::convertToDto).collect(Collectors.toList()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
@@ -36,13 +73,15 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}/subcategories")
-    public ResponseEntity<List<Category>> subcategories(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryRepository.findByParent_IdAndDeletedFalse(id));
+    public ResponseEntity<List<CategorySimpleDto>> subcategories(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryRepository.findByParent_IdAndDeletedFalse(id).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList()));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
-    public ResponseEntity<Category> create(@RequestBody Map<String, Object> req) {
+    public ResponseEntity<CategorySimpleDto> create(@RequestBody Map<String, Object> req) {
         String name = (String) req.getOrDefault("name", "");
         String description = (String) req.getOrDefault("description", "");
         if (name.trim().isEmpty()) {
@@ -59,12 +98,12 @@ public class CategoryController {
             categoryRepository.findById(parentId).ifPresent(c::setParent);
         }
 
-        return ResponseEntity.ok(categoryRepository.save(c));
+        return ResponseEntity.ok(convertToDto(categoryRepository.save(c)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
-    public ResponseEntity<Category> update(@PathVariable Long id, @RequestBody Map<String, Object> req) {
+    public ResponseEntity<CategorySimpleDto> update(@PathVariable Long id, @RequestBody Map<String, Object> req) {
         Category c = categoryRepository.findById(id).orElse(null);
         if (c == null) return ResponseEntity.notFound().build();
         
@@ -84,7 +123,7 @@ public class CategoryController {
             }
         }
         
-        return ResponseEntity.ok(categoryRepository.save(c));
+        return ResponseEntity.ok(convertToDto(categoryRepository.save(c)));
     }
 
     @DeleteMapping("/{id}")
