@@ -5,6 +5,8 @@ class Category {
   final String? imagePath;
   final String? imageLink;
   final bool deleted;
+  final int? parentId;
+  final List<Category> subCategories;
 
   Category({
     required this.id,
@@ -13,6 +15,8 @@ class Category {
     this.imagePath,
     this.imageLink,
     this.deleted = false,
+    this.parentId,
+    this.subCategories = const [],
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,12 @@ class Category {
       imagePath: json['imagePath'],
       imageLink: json['imageLink'],
       deleted: json['deleted'] == true || json['deleted'] == 1,
+      parentId: json['parent'] != null ? (json['parent']['id'] as num?)?.toInt() : (json['parentId'] as num?)?.toInt(),
+      subCategories: json['subCategories'] != null
+          ? (json['subCategories'] as List)
+              .map((e) => Category.fromJson(e as Map<String, dynamic>))
+              .toList()
+          : [],
     );
   }
 
@@ -34,6 +44,8 @@ class Category {
       'imagePath': imagePath,
       'imageLink': imageLink,
       'deleted': deleted,
+      'parentId': parentId,
+      'subCategories': subCategories.map((e) => e.toJson()).toList(),
     };
   }
 }

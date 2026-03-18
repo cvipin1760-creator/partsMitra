@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import { useLanguage } from '../context/LanguageContext';
-import { ROLE_RETAILER, ROLE_MECHANIC, ROLE_WHOLESALER, ROLE_SUPER_MANAGER, ROLE_ADMIN, ROLE_STAFF } from '../services/constants';
+import { ROLE_RETAILER, ROLE_MECHANIC, ROLE_WHOLESALER, ROLE_SUPER_MANAGER, ROLE_ADMIN } from '../services/constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -35,33 +35,28 @@ const Register = () => {
   const [address, setAddress] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
   const navigate = useNavigate();
 
   const handleSendOtp = async () => {
     if (!email || !email.includes('@')) {
-      setMessage('Please enter a valid email address first.');
+      setMessage(t('login.email') + ' ' + t('common.error'));
       return;
     }
-    setSendingOtp(true);
-    setMessage('');
+    setLoading(true);
     try {
-      console.log('Requesting OTP for signup:', email);
-      const res = await AuthService.sendOtp(email, 'signup');
-      console.log('OTP Request Response:', res);
+      await AuthService.sendOtp(email, 'signup');
       setOtpSent(true);
-      setMessage('OTP sent successfully! Please check your email.');
+      setMessage(t('login.otp') + ' ' + t('common.success'));
     } catch (err: any) {
-      console.error('OTP Request Error:', err);
       const resMessage =
         (err.response &&
           err.response.data &&
           err.response.data.message) ||
         err.message ||
         err.toString();
-      setMessage(`Failed to send OTP: ${resMessage}`);
+      setMessage(`${t('common.error')}: ${resMessage}`);
     } finally {
-      setSendingOtp(false);
+      setLoading(false);
     }
   };
 
@@ -319,13 +314,10 @@ const Register = () => {
                   <button
                     type="button"
                     onClick={handleSendOtp}
-                    disabled={sendingOtp || loading || !email || !email.includes('@')}
-                    className="px-5 py-2 bg-primary-50 text-primary-700 rounded-2xl hover:bg-primary-100 transition-colors font-bold text-sm whitespace-nowrap disabled:opacity-50 flex items-center gap-2"
+                    disabled={loading || !email || !email.includes('@')}
+                    className="px-5 py-2 bg-primary-50 text-primary-700 rounded-2xl hover:bg-primary-100 transition-colors font-bold text-sm whitespace-nowrap disabled:opacity-50"
                   >
-                    {sendingOtp ? (
-                      <div className="w-4 h-4 border-2 border-primary-700/30 border-t-primary-700 rounded-full animate-spin"></div>
-                    ) : null}
-                    {otpSent ? 'Resend OTP' : 'Send OTP'}
+                    {otpSent ? t('login.resendOtp') : t('login.sendOtp')}
                   </button>
                 </div>
               </div>
@@ -352,18 +344,18 @@ const Register = () => {
 
             <button
               type="submit"
-              disabled={loading || sendingOtp}
+              disabled={loading}
               className="w-full group relative flex items-center justify-center py-4 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-[1.25rem] font-black transition-all shadow-xl shadow-primary-200 active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Registering...</span>
+                  <span>{t('common.loading')}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <UserPlus size={20} />
-                  <span>{otpSent ? 'Complete Registration' : 'Register (Send OTP First)'}</span>
+                  <span>{t('reg.button')}</span>
                   <ArrowRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               )}

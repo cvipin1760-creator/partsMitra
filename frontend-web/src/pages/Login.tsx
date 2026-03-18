@@ -26,6 +26,8 @@ const Login: React.FC = () => {
   const [isOtpLogin, setIsOtpLogin] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -39,20 +41,47 @@ const Login: React.FC = () => {
     }
   }, [navigate]);
 
+  useEffect(() => {
+    let timer: any;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
+
   const handleSendOtp = async () => {
     if (!email || !email.includes('@')) {
       setMessage(t('login.email') + ' ' + t('common.error'));
       return;
     }
-    setLoading(true);
+    if (countdown > 0) return;
+
+    setSendingOtp(true);
+    setMessage('');
     try {
-      await AuthService.sendOtp(email);
+      const res = await AuthService.sendOtp(email, 'login');
       setOtpSent(true);
-      setMessage(t('login.otp') + ' ' + t('common.success'));
+      const backendMsg = res.data?.message || (t('login.otp') + ' ' + t('common.success'));
+      setMessage(backendMsg);
+      setCountdown(60);
     } catch (err: any) {
-      setMessage(err.response?.data?.message || t('common.error'));
+      const resMessage =
+        (err.response &&
+          err.response.data &&
+          err.response.data.message) ||
+        err.message ||
+        err.toString();
+      
+      if (err.response?.status === 429) {
+        setMessage('Too many requests. Please wait a minute.');
+        setCountdown(60);
+      } else {
+        setMessage(resMessage || t('common.error'));
+      }
     } finally {
-      setLoading(false);
+      setSendingOtp(false);
     }
   };
 
@@ -208,10 +237,13 @@ const Login: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleSendOtp}
-                      disabled={loading || !email || !email.includes('@')}
-                      className="px-5 py-2 bg-primary-50 text-primary-700 rounded-2xl hover:bg-primary-100 transition-colors font-bold text-sm whitespace-nowrap disabled:opacity-50"
+                      disabled={sendingOtp || loading || countdown > 0 || !email || !email.includes('@')}
+                      className="px-5 py-2 bg-primary-50 text-primary-700 rounded-2xl hover:bg-primary-100 transition-colors font-bold text-sm whitespace-nowrap disabled:opacity-50 flex items-center gap-2"
                     >
-                      {otpSent ? t('login.resendOtp') : t('login.sendOtp')}
+                      {sendingOtp ? (
+                        <div className="w-4 h-4 border-2 border-primary-700/30 border-t-primary-700 rounded-full animate-spin"></div>
+                      ) : null}
+                      {countdown > 0 ? `Wait ${countdown}s` : (otpSent ? t('login.resendOtp') : t('login.sendOtp'))}
                     </button>
                   </div>
                 </motion.div>

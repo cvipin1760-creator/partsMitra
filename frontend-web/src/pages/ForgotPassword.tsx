@@ -22,8 +22,20 @@ const ForgotPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    let timer: any;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,16 +43,33 @@ const ForgotPassword = () => {
       setMessage(t('login.email') + ' ' + t('common.error'));
       return;
     }
-    setLoading(true);
+    if (countdown > 0) return;
+
+    setSendingOtp(true);
+    setMessage('');
     try {
       // Re-using AuthService.sendOtp, assuming backend handles purpose=reset or similar
-      await AuthService.sendOtp(email);
+      const res = await AuthService.sendOtp(email, 'reset');
       setOtpSent(true);
-      setMessage('OTP sent to your email for password reset.');
+      const backendMsg = res.data?.message || 'OTP sent to your email for password reset.';
+      setMessage(backendMsg);
+      setCountdown(60);
     } catch (err: any) {
-      setMessage(err.response?.data?.message || t('common.error'));
+      const resMessage =
+        (err.response &&
+          err.response.data &&
+          err.response.data.message) ||
+        err.message ||
+        err.toString();
+      
+      if (err.response?.status === 429) {
+        setMessage('Too many requests. Please wait a minute.');
+        setCountdown(60);
+      } else {
+        setMessage(resMessage || t('common.error'));
+      }
     } finally {
-      setLoading(false);
+      setSendingOtp(false);
     }
   };
 
@@ -142,17 +171,17 @@ const ForgotPassword = () => {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={sendingOtp || countdown > 0}
                 className="w-full group relative flex items-center justify-center py-4 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-[1.25rem] font-black transition-all shadow-xl shadow-primary-200 active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100"
               >
-                {loading ? (
+                {sendingOtp ? (
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
                     <span>{t('common.loading')}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span>{t('login.sendOtp')}</span>
+                    <span>{countdown > 0 ? `Wait ${countdown}s` : t('login.sendOtp')}</span>
                     <ArrowRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
                   </div>
                 )}

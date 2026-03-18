@@ -1,6 +1,7 @@
 
 package com.spareparts.inventory.controller;
 
+import com.spareparts.inventory.dto.PaginatedResponse;
 import com.spareparts.inventory.dto.ProductDto;
 import com.spareparts.inventory.repository.ProductRepository;
 import com.spareparts.inventory.entity.Product;
@@ -40,22 +41,37 @@ public class ProductController {
 
     @GetMapping("/wholesaler")
     @PreAuthorize("hasRole('WHOLESALER') or hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
-    public ResponseEntity<List<ProductDto>> getWholesalerProducts(Authentication authentication) {
+    public ResponseEntity<PaginatedResponse<ProductDto>> getWholesalerProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction,
+            Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        return ResponseEntity.ok(productService.getWholesalerProducts(userDetails.getId()));
+        return ResponseEntity.ok(productService.getWholesalerProducts(userDetails.getId(), page, size, sortBy, direction));
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductDto>> getAllProducts(@RequestParam(value = "categoryId", required = false) Long categoryId) {
+    public ResponseEntity<PaginatedResponse<ProductDto>> getAllProducts(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
         if (categoryId != null) {
-            return ResponseEntity.ok(productService.getProductsByCategory(categoryId));
+            return ResponseEntity.ok(productService.getProductsByCategory(categoryId, page, size, sortBy, direction));
         }
-        return ResponseEntity.ok(productService.getAllProducts());
+        return ResponseEntity.ok(productService.getAllProducts(page, size, sortBy, direction));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<ProductDto>> searchProducts(@RequestParam String query) {
-        return ResponseEntity.ok(productService.searchProducts(query));
+    public ResponseEntity<PaginatedResponse<ProductDto>> searchProducts(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        return ResponseEntity.ok(productService.searchProducts(query, page, size, sortBy, direction));
     }
 
     @PutMapping("/{id}")

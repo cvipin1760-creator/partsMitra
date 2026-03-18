@@ -113,7 +113,9 @@ public class AuthController {
             // Store the OTP anyway so the user can still use it if it shows up in backend logs
             OTP_STORAGE.put(email, otp);
             
-            return ResponseEntity.status(500).body(new MessageResponse("Failed to send email. Please check your internet or contact support."));
+            // Return 200 OK but with a warning message. This allows the frontend to show the OTP field
+            // so the user can still enter the OTP if they have access to server logs or if it's a known test OTP.
+            return ResponseEntity.ok(new MessageResponse("OTP generated. (Note: Email delivery failed, please check server logs or contact support if you didn't receive it)"));
         }
     }
 

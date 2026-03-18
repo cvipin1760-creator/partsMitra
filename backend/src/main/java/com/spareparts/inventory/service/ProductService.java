@@ -1,6 +1,7 @@
 
 package com.spareparts.inventory.service;
 
+import com.spareparts.inventory.dto.PaginatedResponse;
 import com.spareparts.inventory.dto.ProductDto;
 import com.spareparts.inventory.entity.Product;
 import com.spareparts.inventory.entity.Category;
@@ -13,6 +14,10 @@ import com.spareparts.inventory.observer.ProductSubject;
 import com.spareparts.inventory.observer.WhatsAppNotificationObserver;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +45,55 @@ public class ProductService extends ProductSubject {
     public void init() {
         addObserver(inAppNotificationObserver);
         addObserver(whatsAppNotificationObserver);
+    }
+
+    private <T> PaginatedResponse<ProductDto> convertToPaginatedResponse(Page<Product> page) {
+        List<ProductDto> content = page.getContent().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+        
+        return new PaginatedResponse<>(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isLast()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ProductDto> getAllProducts(int page, int size, String sortBy, String direction) {
+        Sort sort = direction.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> productPage = productRepository.findByDeletedFalse(pageable);
+        return convertToPaginatedResponse(productPage);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ProductDto> getProductsByCategory(Long categoryId, int page, int size, String sortBy, String direction) {
+        Sort sort = direction.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> productPage = productRepository.findByCategory_IdAndDeletedFalse(categoryId, pageable);
+        return convertToPaginatedResponse(productPage);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ProductDto> searchProducts(String query, int page, int size, String sortBy, String direction) {
+        Sort sort = direction.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> productPage = productRepository.searchProducts(query, pageable);
+        return convertToPaginatedResponse(productPage);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ProductDto> getWholesalerProducts(Long wholesalerId, int page, int size, String sortBy, String direction) {
+        User wholesaler = userRepository.findById(wholesalerId)
+                .orElseThrow(() -> new RuntimeException("Wholesaler not found"));
+        Sort sort = direction.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> productPage = productRepository.findByWholesalerAndDeletedFalse(wholesaler, pageable);
+        return convertToPaginatedResponse(productPage);
     }
 
     @Transactional

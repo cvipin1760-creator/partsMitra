@@ -23,42 +23,62 @@ public class CategoryController {
     private ProductRepository productRepository;
 
     @GetMapping
-    public ResponseEntity<List<Category>> list() {
-        return ResponseEntity.ok(categoryRepository.findAll());
+    public ResponseEntity<List<Category>> list(@RequestParam(required = false) Boolean rootsOnly) {
+        if (Boolean.TRUE.equals(rootsOnly)) {
+            return ResponseEntity.ok(categoryRepository.findByParentIsNullAndDeletedFalse());
+        }
+        return ResponseEntity.ok(categoryRepository.findByDeletedFalse());
+    }
+
+    @GetMapping("/{id}/subcategories")
+    public ResponseEntity<List<Category>> subcategories(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryRepository.findByParent_IdAndDeletedFalse(id));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
-    public ResponseEntity<Category> create(@RequestBody Map<String, String> req) {
-        String name = req.getOrDefault("name", "").trim();
-        String description = req.getOrDefault("description", "").trim();
-        if (name.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (categoryRepository.findByNameIgnoreCase(name).isPresent()) {
+    public ResponseEntity<Category> create(@RequestBody Map<String, Object> req) {
+        String name = (String) req.getOrDefault("name", "");
+        String description = (String) req.getOrDefault("description", "");
+        if (name.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
         Category c = new Category();
         c.setName(name);
         c.setDescription(description);
-        c.setImagePath(req.getOrDefault("imagePath", ""));
-        c.setImageLink(req.getOrDefault("imageLink", ""));
+        c.setImagePath((String) req.getOrDefault("imagePath", ""));
+        c.setImageLink((String) req.getOrDefault("imageLink", ""));
+
+        if (req.containsKey("parentId") && req.get("parentId") != null) {
+            Long parentId = Long.valueOf(req.get("parentId").toString());
+            categoryRepository.findById(parentId).ifPresent(c::setParent);
+        }
+
         return ResponseEntity.ok(categoryRepository.save(c));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
-    public ResponseEntity<Category> update(@PathVariable Long id, @RequestBody Map<String, String> req) {
+    public ResponseEntity<Category> update(@PathVariable Long id, @RequestBody Map<String, Object> req) {
         Category c = categoryRepository.findById(id).orElse(null);
         if (c == null) return ResponseEntity.notFound().build();
-        String name = req.getOrDefault("name", c.getName());
-        String description = req.getOrDefault("description", c.getDescription());
-        String imagePath = req.getOrDefault("imagePath", c.getImagePath());
-        String imageLink = req.getOrDefault("imageLink", c.getImageLink());
-        c.setName(name);
-        c.setDescription(description);
-        c.setImagePath(imagePath);
-        c.setImageLink(imageLink);
+        
+        if (req.containsKey("name")) c.setName((String) req.get("name"));
+        if (req.containsKey("description")) c.setDescription((String) req.get("description"));
+        if (req.containsKey("imagePath")) c.setImagePath((String) req.get("imagePath"));
+        if (req.containsKey("imageLink")) c.setImageLink((String) req.get("imageLink"));
+        
+        if (req.containsKey("parentId")) {
+            if (req.get("parentId") == null) {
+                c.setParent(null);
+            } else {
+                Long parentId = Long.valueOf(req.get("parentId").toString());
+                if (!parentId.equals(id)) { // Prevent self-referencing
+                    categoryRepository.findById(parentId).ifPresent(c::setParent);
+                }
+            }
+        }
+        
         return ResponseEntity.ok(categoryRepository.save(c));
     }
 

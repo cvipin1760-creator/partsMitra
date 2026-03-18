@@ -3,7 +3,11 @@ package com.spareparts.inventory.repository;
 
 import com.spareparts.inventory.entity.Product;
 import com.spareparts.inventory.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,14 +16,23 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByWholesalerAndDeletedFalse(User wholesaler);
+    Page<Product> findByWholesalerAndDeletedFalse(User wholesaler, Pageable pageable);
     List<Product> findByWholesalerAndDeletedTrue(User wholesaler);
     Optional<Product> findByPartNumberAndDeletedFalse(String partNumber);
     Optional<Product> findByPartNumberAndWholesalerAndDeletedFalse(String partNumber, User wholesaler);
-    @org.springframework.data.jpa.repository.Query("SELECT p FROM Product p WHERE (LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.partNumber) LIKE LOWER(CONCAT('%', :query, '%'))) AND p.deleted = false")
-    List<Product> searchProducts(@org.springframework.data.repository.query.Param("query") String query);
+    
+    @Query("SELECT p FROM Product p WHERE (LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.partNumber) LIKE LOWER(CONCAT('%', :query, '%'))) AND p.deleted = false")
+    List<Product> searchProducts(@Param("query") String query);
+    
+    @Query("SELECT p FROM Product p WHERE (LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.partNumber) LIKE LOWER(CONCAT('%', :query, '%'))) AND p.deleted = false")
+    Page<Product> searchProducts(@Param("query") String query, Pageable pageable);
     
     List<Product> findByCategory_IdAndDeletedFalse(Long categoryId);
+    Page<Product> findByCategory_IdAndDeletedFalse(Long categoryId, Pageable pageable);
+    
     List<Product> findByDeletedFalse();
+    Page<Product> findByDeletedFalse(Pageable pageable);
+    
     List<Product> findByDeletedTrue();
     
     @org.springframework.data.jpa.repository.Modifying

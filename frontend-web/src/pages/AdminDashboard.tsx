@@ -29,6 +29,13 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [pagination, setPagination] = useState({
+    pageNumber: 0,
+    pageSize: 10,
+    totalElements: 0,
+    totalPages: 0,
+    last: true
+  });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('users');
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -55,7 +62,7 @@ const AdminDashboard = () => {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showEditCategory, setShowEditCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '', imagePath: '', imageLink: '' });
+  const [newCategory, setNewCategory] = useState({ name: '', description: '', imagePath: '', imageLink: '', parentId: '' });
   const [selectedExcelCategory, setSelectedExcelCategory] = useState<string>('');
 
   const [deletedUsers, setDeletedUsers] = useState<any[]>([]);
@@ -316,10 +323,17 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page = 0) => {
     try {
-      const res = await api.get('/products');
-      setProducts(res.data);
+      const res = await api.get(`/products?page=${page}&size=10&sortBy=id&direction=desc`);
+      setProducts(res.data.content);
+      setPagination({
+        pageNumber: res.data.pageNumber,
+        pageSize: res.data.pageSize,
+        totalElements: res.data.totalElements,
+        totalPages: res.data.totalPages,
+        last: res.data.last
+      });
     } catch (err) {
       console.error(err);
     }
@@ -492,9 +506,12 @@ const AdminDashboard = () => {
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/categories', newCategory);
+      await api.post('/categories', {
+        ...newCategory,
+        parentId: newCategory.parentId ? Number(newCategory.parentId) : null
+      });
       setShowAddCategory(false);
-      setNewCategory({ name: '', description: '', imagePath: '', imageLink: '' });
+      setNewCategory({ name: '', description: '', imagePath: '', imageLink: '', parentId: '' });
       fetchCategories();
     } catch (err) {
       console.error(err);
@@ -506,7 +523,10 @@ const AdminDashboard = () => {
     e.preventDefault();
     if (!editingCategory) return;
     try {
-      await api.put(`/categories/${editingCategory.id}`, editingCategory);
+      await api.put(`/categories/${editingCategory.id}`, {
+        ...editingCategory,
+        parentId: editingCategory.parentId ? Number(editingCategory.parentId) : null
+      });
       setShowEditCategory(false);
       setEditingCategory(null);
       fetchCategories();
@@ -1155,6 +1175,46 @@ const AdminDashboard = () => {
               ))}
             </tbody>
           </table>
+          
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+              <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Showing {products.length} of {pagination.totalElements} products
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fetchProducts(pagination.pageNumber - 1)}
+                  disabled={pagination.pageNumber === 0}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition shadow-sm"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {[...Array(pagination.totalPages)].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => fetchProducts(i)}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold transition ${
+                        pagination.pageNumber === i 
+                          ? 'bg-primary-600 text-white shadow-md' 
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => fetchProducts(pagination.pageNumber + 1)}
+                  disabled={pagination.last}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition shadow-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1947,6 +2007,19 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Parent Category</label>
+                <select
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition bg-white"
+                  value={newCategory.parentId}
+                  onChange={e => setNewCategory({...newCategory, parentId: e.target.value})}
+                >
+                  <option value="">None (Root Category)</option>
+                  {categories.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Category Image</label>
                 <div className="mt-2 flex flex-col items-center p-6 border-2 border-dashed border-gray-200 rounded-2xl hover:border-primary-500 transition cursor-pointer relative group">
                   <input
@@ -2014,6 +2087,19 @@ const AdminDashboard = () => {
                   value={editingCategory.description || ''}
                   onChange={e => setEditingCategory({...editingCategory, description: e.target.value})}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Parent Category</label>
+                <select
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition bg-white"
+                  value={editingCategory.parentId || ''}
+                  onChange={e => setEditingCategory({...editingCategory, parentId: e.target.value})}
+                >
+                  <option value="">None (Root Category)</option>
+                  {categories.filter(c => c.id !== editingCategory.id).map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Category Image</label>

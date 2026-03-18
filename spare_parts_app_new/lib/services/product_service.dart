@@ -200,40 +200,57 @@ class ProductService {
 
   Map<String, String> parseQRContent(String raw) {
     // Typical Honda/Spare Part QR format: "PARTNUMBER,MRP,..."
-    // or just the part number.
-    // We try to extract Part Number and MRP.
-    final Map<String, String> result = {'partNumber': raw, 'mrp': ''};
+    // or just the part number. We try to extract Part Number and MRP.
+    final Map<String, String> result = {'partNumber': raw.trim(), 'mrp': ''};
 
-    // 1. Try splitting by comma
-    final parts = raw.split(',');
+    // Try common delimiters: comma, pipe, tab
+    final parts = raw.split(RegExp(r'[,|\t]')).map((e) => e.trim()).toList();
+
     if (parts.length >= 2) {
-      // Check if the first part looks like a part number (alphanumeric, at least 5 chars)
-      final pn = parts[0].trim().toUpperCase();
-      if (RegExp(r'^[A-Z0-9\-_]{5,}$').hasMatch(pn)) {
-        result['partNumber'] = pn;
-        // Check if the second part looks like a price
-        final price = parts[1].trim();
-        if (RegExp(r'^\d+(\.\d+)?$').hasMatch(price)) {
-          result['mrp'] = price;
+      final pn = parts[0].toUpperCase();
+      result['partNumber'] = pn;
+
+      // Look for MRP in subsequent parts
+      for (int i = 1; i < parts.length; i++) {
+        String p = parts[i].toUpperCase();
+        // Remove "MRP" prefix if present
+        p = p.replaceAll('MRP', '').trim();
+        // Remove any non-numeric currency symbols
+        p = p.replaceAll(RegExp(r'[^0-9\.]'), '').trim();
+
+        if (RegExp(r'^\d+(\.\d+)?$').hasMatch(p)) {
+          result['mrp'] = p;
+          break;
         }
       }
     } else {
-      // 2. Try splitting by other delimiters like pipe or tab
-      final partsOther = raw.split(RegExp(r'[|\t]'));
-      if (partsOther.length >= 2) {
-        final pn = partsOther[0].trim().toUpperCase();
-        if (RegExp(r'^[A-Z0-9\-_]{5,}$').hasMatch(pn)) {
-          result['partNumber'] = pn;
-          final price = partsOther[1].trim();
-          if (RegExp(r'^\d+(\.\d+)?$').hasMatch(price)) {
-            result['mrp'] = price;
+      // Try space as delimiter if only 1 part found by other delimiters
+      final spaceParts =
+          raw.split(RegExp(r'\s+')).map((e) => e.trim()).toList();
+      if (spaceParts.length >= 2) {
+        result['partNumber'] = spaceParts[0].toUpperCase();
+        for (int i = 1; i < spaceParts.length; i++) {
+          String p = spaceParts[i].toUpperCase();
+          p = p.replaceAll('MRP', '').trim();
+          p = p.replaceAll(RegExp(r'[^0-9\.]'), '').trim();
+          if (RegExp(r'^\d+(\.\d+)?$').hasMatch(p)) {
+            result['mrp'] = p;
+            break;
           }
         }
       }
     }
 
-    // Clean up result partNumber (some QR codes might have extra info)
-    // If partNumber is a URL, extract the last path segment or query param
+    // If no MRP found yet, check if the raw string contains MRP followed by a number
+    if (result['mrp']!.isEmpty) {
+      final mrpMatch = RegExp(r'MRP[:\s]*(\d+(\.\d+)?)', caseSensitive: false)
+          .firstMatch(raw);
+      if (mrpMatch != null) {
+        result['mrp'] = mrpMatch.group(1)!;
+      }
+    }
+
+    // Clean up result partNumber (URLs etc.)
     if (result['partNumber']!.startsWith('http')) {
       try {
         final uri = Uri.parse(result['partNumber']!);
@@ -248,13 +265,19 @@ class ProductService {
     return result;
   }
 
-  Future<List<Map<String, dynamic>>> getCategories() async {
+  Future<List<Map<String, dynamic>>> getCategories(
+      {bool rootsOnly = false}) async {
     try {
       if (Constants.useRemote) {
-        final list = await _remote.getList('/categories');
+        final list = await _remote
+            .getList('/categories${rootsOnly ? "?rootsOnly=true" : ""}');
         return list.map((e) => e as Map<String, dynamic>).toList();
       }
       final db = await _dbService.database;
+      if (rootsOnly) {
+        return await db.query('categories',
+            where: 'deleted = 0 AND parentId IS NULL');
+      }
       return await db.query('categories', where: 'deleted = 0');
     } catch (e) {
       debugPrint('Get categories error: $e');
@@ -262,10 +285,13 @@ class ProductService {
     }
   }
 
-  Future<List<Product>> getProductsByCategory(int categoryId) async {
+  Future<List<Product>> getProductsByCategory(int categoryId,
+      {int page = 0, int size = 10}) async {
     try {
       if (Constants.useRemote) {
-        final list = await _remote.getList('/products?categoryId=$categoryId');
+        final data = await _remote
+            .getJson('/products?categoryId=$categoryId&page=$page&size=$size');
+        final List<dynamic> list = data['content'];
         final products = list
             .map((e) => Product.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -299,10 +325,14 @@ class ProductService {
         }
         return enabledOnly.where((p) => p.sellingPrice > 0).toList();
       }
-
       final db = await _dbService.database;
-      final maps = await db.query('products',
-          where: 'categoryId = ? AND deleted = 0', whereArgs: [categoryId]);
+      final List<Map<String, dynamic>> maps = await db.query(
+        'products',
+        where: 'categoryId = ? AND deleted = 0',
+        whereArgs: [categoryId],
+        limit: size,
+        offset: page * size,
+      );
       return maps.map((p) => Product.fromJson(p)).toList();
     } catch (e) {
       debugPrint('Get products by category error: $e');
@@ -310,10 +340,11 @@ class ProductService {
     }
   }
 
-  Future<List<Product>> getAllProducts() async {
+  Future<List<Product>> getAllProducts({int page = 0, int size = 10}) async {
     try {
       if (Constants.useRemote) {
-        final list = await _remote.getList('/products');
+        final data = await _remote.getJson('/products?page=$page&size=$size');
+        final List<dynamic> list = data['content'];
         final products = list
             .map((e) => Product.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -345,8 +376,12 @@ class ProductService {
         return enabledOnly.where((p) => p.sellingPrice > 0).toList();
       }
       final db = await _dbService.database;
-      final List<Map<String, dynamic>> maps =
-          await db.query('products', where: 'deleted = 0');
+      final List<Map<String, dynamic>> maps = await db.query(
+        'products',
+        where: 'deleted = 0',
+        limit: size,
+        offset: page * size,
+      );
       final products = maps.map((p) => Product.fromJson(p)).toList();
       final prefs = await SharedPreferences.getInstance();
       final userStr = prefs.getString('user');
@@ -381,7 +416,8 @@ class ProductService {
     }
   }
 
-  Future<List<Product>> searchProducts(String query) async {
+  Future<List<Product>> searchProducts(String query,
+      {int page = 0, int size = 10}) async {
     if (query.isEmpty) return [];
     try {
       String correctedQuery = query;
@@ -394,9 +430,10 @@ class ProductService {
         }
       }
       if (Constants.useRemote) {
-        final list = await _remote.getList(
-          '/products/search?query=${Uri.encodeComponent(correctedQuery)}',
+        final data = await _remote.getJson(
+          '/products/search?query=${Uri.encodeComponent(correctedQuery)}&page=$page&size=$size',
         );
+        final List<dynamic> list = data['content'];
         final products = list
             .map((e) => Product.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -440,10 +477,12 @@ class ProductService {
           correctedQuery,
           '%$correctedQuery%'
         ],
+        limit: size,
+        offset: page * size,
       );
       final List<Map<String, dynamic>> aliasMatches = await db.rawQuery(
-        'SELECT p.* FROM products p INNER JOIN product_aliases a ON a.productId = p.id WHERE a.alias LIKE ?',
-        ['%$correctedQuery%'],
+        'SELECT p.* FROM products p INNER JOIN product_aliases a ON a.productId = p.id WHERE a.alias LIKE ? LIMIT ? OFFSET ?',
+        ['%$correctedQuery%', size, page * size],
       );
       final all = [...direct, ...aliasMatches];
       final seen = <int>{};
