@@ -23,8 +23,8 @@ public class CategoryController {
     private ProductRepository productRepository;
 
     @GetMapping
-    public ResponseEntity<List<Category>> list(@RequestParam(required = false) String rootsOnly) {
-        if ("true".equalsIgnoreCase(rootsOnly)) {
+    public ResponseEntity<List<Category>> list(@RequestParam(value = "rootsOnly", required = false, defaultValue = "false") boolean rootsOnly) {
+        if (rootsOnly) {
             return ResponseEntity.ok(categoryRepository.findByParentIsNullAndDeletedFalse());
         }
         return ResponseEntity.ok(categoryRepository.findByDeletedFalse());

@@ -13,9 +13,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "categories")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"parent", "subCategories"})
+@EqualsAndHashCode(exclude = {"parent", "subCategories"})
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

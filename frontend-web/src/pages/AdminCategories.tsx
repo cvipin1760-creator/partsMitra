@@ -29,7 +29,7 @@ const AdminCategories: React.FC = () => {
     setError('');
     try {
       // Get all categories to show hierarchy
-      const res = await api.get('/categories?rootsOnly=false');
+      const res = await api.get('/categories');
       setCategories(res.data || []);
     } catch (e: any) {
       setError('Failed to load categories');
