@@ -265,19 +265,13 @@ class ProductService {
     return result;
   }
 
-  Future<List<Map<String, dynamic>>> getCategories(
-      {bool rootsOnly = false}) async {
+  Future<List<Map<String, dynamic>>> getCategories() async {
     try {
       if (Constants.useRemote) {
-        final list = await _remote
-            .getList('/categories${rootsOnly ? "?rootsOnly=true" : ""}');
+        final list = await _remote.getList('/categories');
         return list.map((e) => e as Map<String, dynamic>).toList();
       }
       final db = await _dbService.database;
-      if (rootsOnly) {
-        return await db.query('categories',
-            where: 'deleted = 0 AND parentId IS NULL');
-      }
       return await db.query('categories', where: 'deleted = 0');
     } catch (e) {
       debugPrint('Get categories error: $e');

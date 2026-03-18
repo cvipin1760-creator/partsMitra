@@ -819,74 +819,31 @@ class _WholesalerShopScreenState extends State<WholesalerShopScreen> {
                                 checkmarkColor: Colors.white,
                               ),
                             ),
-                            ...(() {
-                              final List<Widget> chips = [];
-                              // Separate root and sub categories
-                              final roots = _categories
-                                  .where((c) => c['parentId'] == null)
-                                  .toList();
-                              for (var cat in roots) {
-                                final id = cat['id'] as int;
-                                final name = cat['name'] as String;
-                                final bool isSelected =
-                                    _selectedCategoryId == id;
-                                chips.add(Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: FilterChip(
-                                    avatar: Icon(_getCategoryIcon(name),
-                                        size: 18,
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.green),
-                                    label: Text(name),
-                                    selected: isSelected,
-                                    onSelected: (selected) =>
-                                        _onCategorySelected(
-                                            selected ? id : null),
-                                    selectedColor: Colors.green,
-                                    labelStyle: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.black),
-                                    checkmarkColor: Colors.white,
-                                  ),
-                                ));
-
-                                // Find subcategories for this root
-                                final subs = _categories
-                                    .where((c) => c['parentId'] == id)
-                                    .toList();
-                                for (var sub in subs) {
-                                  final sid = sub['id'] as int;
-                                  final sname = sub['name'] as String;
-                                  final bool sisSelected =
-                                      _selectedCategoryId == sid;
-                                  chips.add(Padding(
-                                    padding: const EdgeInsets.only(right: 8.0),
-                                    child: FilterChip(
-                                      avatar: Icon(_getCategoryIcon(sname),
-                                          size: 16,
-                                          color: sisSelected
-                                              ? Colors.white
-                                              : Colors.grey),
-                                      label: Text(sname,
-                                          style: const TextStyle(fontSize: 12)),
-                                      selected: sisSelected,
-                                      onSelected: (selected) =>
-                                          _onCategorySelected(
-                                              selected ? sid : null),
-                                      selectedColor: Colors.grey.shade700,
-                                      labelStyle: TextStyle(
-                                          color: sisSelected
-                                              ? Colors.white
-                                              : Colors.black87),
-                                      checkmarkColor: Colors.white,
-                                    ),
-                                  ));
-                                }
-                              }
-                              return chips;
-                            })(),
+                            ..._categories.map((cat) {
+                              final id = cat['id'] as int;
+                              final name = cat['name'] as String;
+                              final bool isSelected = _selectedCategoryId == id;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: FilterChip(
+                                  avatar: Icon(_getCategoryIcon(name),
+                                      size: 18,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.green),
+                                  label: Text(name),
+                                  selected: isSelected,
+                                  onSelected: (selected) =>
+                                      _onCategorySelected(selected ? id : null),
+                                  selectedColor: Colors.green,
+                                  labelStyle: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.black),
+                                  checkmarkColor: Colors.white,
+                                ),
+                              );
+                            }).toList(),
                           ],
                         ),
                       ),

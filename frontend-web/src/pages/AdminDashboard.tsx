@@ -62,7 +62,7 @@ const AdminDashboard = () => {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showEditCategory, setShowEditCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '', imagePath: '', imageLink: '', parentId: '' });
+  const [newCategory, setNewCategory] = useState({ name: '', description: '', imagePath: '', imageLink: '' });
   const [selectedExcelCategory, setSelectedExcelCategory] = useState<string>('');
 
   const [deletedUsers, setDeletedUsers] = useState<any[]>([]);
@@ -507,11 +507,10 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       await api.post('/categories', {
-        ...newCategory,
-        parentId: newCategory.parentId ? Number(newCategory.parentId) : null
+        ...newCategory
       });
       setShowAddCategory(false);
-      setNewCategory({ name: '', description: '', imagePath: '', imageLink: '', parentId: '' });
+      setNewCategory({ name: '', description: '', imagePath: '', imageLink: '' });
       fetchCategories();
     } catch (err) {
       console.error(err);
@@ -524,8 +523,7 @@ const AdminDashboard = () => {
     if (!editingCategory) return;
     try {
       await api.put(`/categories/${editingCategory.id}`, {
-        ...editingCategory,
-        parentId: editingCategory.parentId ? Number(editingCategory.parentId) : null
+        ...editingCategory
       });
       setShowEditCategory(false);
       setEditingCategory(null);
@@ -2007,19 +2005,6 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Parent Category</label>
-                <select
-                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition bg-white"
-                  value={newCategory.parentId}
-                  onChange={e => setNewCategory({...newCategory, parentId: e.target.value})}
-                >
-                  <option value="">None (Root Category)</option>
-                  {categories.map((c: any) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Category Image</label>
                 <div className="mt-2 flex flex-col items-center p-6 border-2 border-dashed border-gray-200 rounded-2xl hover:border-primary-500 transition cursor-pointer relative group">
                   <input
@@ -2087,19 +2072,6 @@ const AdminDashboard = () => {
                   value={editingCategory.description || ''}
                   onChange={e => setEditingCategory({...editingCategory, description: e.target.value})}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Parent Category</label>
-                <select
-                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition bg-white"
-                  value={editingCategory.parentId || ''}
-                  onChange={e => setEditingCategory({...editingCategory, parentId: e.target.value})}
-                >
-                  <option value="">None (Root Category)</option>
-                  {categories.filter(c => c.id !== editingCategory.id).map((c: any) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Category Image</label>

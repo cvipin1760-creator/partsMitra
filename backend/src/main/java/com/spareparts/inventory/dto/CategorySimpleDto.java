@@ -15,15 +15,4 @@ public class CategorySimpleDto {
     private String description;
     private String imagePath;
     private String imageLink;
-    private Long parentId;
-    private ParentCategoryDto parent;
-    private List<CategorySimpleDto> subCategories;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ParentCategoryDto {
-        private Long id;
-        private String name;
-    }
 }

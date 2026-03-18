@@ -16,8 +16,8 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = {"parent", "subCategories"})
-@EqualsAndHashCode(exclude = {"parent", "subCategories"})
+@ToString
+@EqualsAndHashCode
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,15 +34,6 @@ public class Category {
 
     @Column(length = 500)
     private String imageLink;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    @JsonBackReference
-    private Category parent;
-
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private List<Category> subCategories = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

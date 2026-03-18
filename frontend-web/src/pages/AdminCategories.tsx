@@ -7,8 +7,6 @@ type Category = {
   description?: string; 
   imagePath?: string; 
   imageLink?: string;
-  parent?: { id: number; name: string };
-  subCategories?: Category[];
 };
 
 const AdminCategories: React.FC = () => {
@@ -17,7 +15,6 @@ const AdminCategories: React.FC = () => {
   const [description, setDescription] = useState('');
   const [imagePath, setImagePath] = useState('');
   const [imageLink, setImageLink] = useState('');
-  const [parentId, setParentId] = useState<string>('');
   const [editing, setEditing] = useState<Category | null>(null);
   const [assignPartNumber, setAssignPartNumber] = useState('');
   const [assignCategoryId, setAssignCategoryId] = useState('');
@@ -28,7 +25,6 @@ const AdminCategories: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      // Get all categories to show hierarchy
       const res = await api.get('/categories');
       setCategories(res.data || []);
     } catch (e: any) {
@@ -49,8 +45,7 @@ const AdminCategories: React.FC = () => {
         name, 
         description, 
         imagePath, 
-        imageLink,
-        parentId: parentId ? Number(parentId) : null
+        imageLink
       };
       
       if (editing) {
@@ -72,12 +67,11 @@ const AdminCategories: React.FC = () => {
     setDescription('');
     setImagePath('');
     setImageLink('');
-    setParentId('');
     setEditing(null);
   };
 
   const del = async (id: number) => {
-    if (!confirm('Delete this category? Subcategories will also be affected if any.')) return;
+    if (!confirm('Delete this category?')) return;
     setLoading(true);
     setError('');
     try {
@@ -116,37 +110,31 @@ const AdminCategories: React.FC = () => {
     }
   };
 
-  const renderCategory = (c: Category, level = 0) => {
+  const renderCategory = (c: Category) => {
     return (
-      <React.Fragment key={c.id}>
-        <div className={`p-3 rounded border border-gray-200 flex items-center justify-between mb-2 ${level > 0 ? 'ml-6 bg-gray-50' : 'bg-white'}`}>
-          <div>
-            <div className="font-bold flex items-center gap-2">
-              {level > 0 && <span className="text-gray-400">└</span>}
-              {c.name}
-              {c.parent && level === 0 && <span className="text-xs font-normal text-gray-400">(Child of {c.parent.name})</span>}
-            </div>
-            {c.description && <div className="text-sm text-gray-500">{c.description}</div>}
+      <div key={c.id} className="p-3 rounded border border-gray-200 flex items-center justify-between mb-2 bg-white">
+        <div>
+          <div className="font-bold flex items-center gap-2">
+            {c.name}
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => { 
-                setEditing(c); 
-                setName(c.name); 
-                setDescription(c.description || ''); 
-                setImagePath(c.imagePath || ''); 
-                setImageLink(c.imageLink || '');
-                setParentId(c.parent?.id?.toString() || '');
-              }} 
-              className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm font-medium"
-            >
-              Edit
-            </button>
-            <button onClick={() => del(c.id)} className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm font-medium">Delete</button>
-          </div>
+          {c.description && <div className="text-sm text-gray-500">{c.description}</div>}
         </div>
-        {/* If we had nested structure from backend, we could recurse here */}
-      </React.Fragment>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => { 
+              setEditing(c); 
+              setName(c.name); 
+              setDescription(c.description || ''); 
+              setImagePath(c.imagePath || ''); 
+              setImageLink(c.imageLink || '');
+            }} 
+            className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm font-medium"
+          >
+            Edit
+          </button>
+          <button onClick={() => del(c.id)} className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm font-medium">Delete</button>
+        </div>
+      </div>
     );
   };
 
@@ -163,18 +151,9 @@ const AdminCategories: React.FC = () => {
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
             <h2 className="text-lg font-bold mb-4 text-gray-800">{editing ? 'Edit Category' : 'Create New Category'}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
+              <div className="md:col-span-2 space-y-1">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Name</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Category name" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parent Category</label>
-                <select value={parentId} onChange={(e) => setParentId(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all bg-white">
-                  <option value="">None (Root Category)</option>
-                  {categories.filter(c => !editing || c.id !== editing.id).map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
               </div>
               <div className="md:col-span-2 space-y-1">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Description</label>

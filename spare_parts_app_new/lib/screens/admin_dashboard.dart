@@ -1852,33 +1852,10 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
                           value: null,
                           child: Text('Auto-categorize (AI)'),
                         ),
-                        ...(() {
-                          final List<DropdownMenuItem<int>> items = [];
-                          final roots = categories
-                              .where((c) => c['parentId'] == null)
-                              .toList();
-                          for (var root in roots) {
-                            items.add(DropdownMenuItem<int>(
-                              value: root['id'] as int,
-                              child: Text(root['name'] ?? ''),
-                            ));
-                            final subs = categories
-                                .where((c) => c['parentId'] == root['id'])
-                                .toList();
-                            for (var sub in subs) {
-                              items.add(DropdownMenuItem<int>(
-                                value: sub['id'] as int,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 16.0),
-                                  child: Text('└ ${sub['name'] ?? ''}',
-                                      style: const TextStyle(
-                                          fontSize: 13, color: Colors.grey)),
-                                ),
-                              ));
-                            }
-                          }
-                          return items;
-                        })(),
+                        ...categories.map((c) => DropdownMenuItem<int>(
+                              value: c['id'] as int,
+                              child: Text(c['name'] ?? ''),
+                            )),
                       ],
                       onChanged: (val) =>
                           setDialogState(() => selectedCategoryId = val),
@@ -2159,35 +2136,10 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
                     value: null,
                     child: Text('Uncategorized'),
                   ),
-                  ...(() {
-                    final List<DropdownMenuItem<int>> items = [];
-                    // Separate root and sub categories
-                    final roots = _categories
-                        .where((c) => c['parentId'] == null)
-                        .toList();
-                    for (var root in roots) {
-                      items.add(DropdownMenuItem<int>(
-                        value: root['id'] as int,
-                        child: Text(root['name'] ?? ''),
-                      ));
-                      // Find subcategories for this root
-                      final subs = _categories
-                          .where((c) => c['parentId'] == root['id'])
-                          .toList();
-                      for (var sub in subs) {
-                        items.add(DropdownMenuItem<int>(
-                          value: sub['id'] as int,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 16.0),
-                            child: Text('└ ${sub['name'] ?? ''}',
-                                style: const TextStyle(
-                                    fontSize: 13, color: Colors.grey)),
-                          ),
-                        ));
-                      }
-                    }
-                    return items;
-                  })(),
+                  ..._categories.map((c) => DropdownMenuItem<int>(
+                        value: c['id'] as int,
+                        child: Text(c['name'] ?? ''),
+                      )),
                 ],
                 onChanged: (val) =>
                     setDialogState(() => selectedCategoryId = val),

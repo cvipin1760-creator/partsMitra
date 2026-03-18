@@ -32,51 +32,18 @@ public class CategoryController {
         dto.setDescription(c.getDescription());
         dto.setImagePath(c.getImagePath());
         dto.setImageLink(c.getImageLink());
-        if (c.getParent() != null) {
-            dto.setParentId(c.getParent().getId());
-            dto.setParent(new CategorySimpleDto.ParentCategoryDto(c.getParent().getId(), c.getParent().getName()));
-        }
-        if (c.getSubCategories() != null && !c.getSubCategories().isEmpty()) {
-            dto.setSubCategories(c.getSubCategories().stream()
-                    .map(sub -> {
-                        CategorySimpleDto subDto = new CategorySimpleDto();
-                        subDto.setId(sub.getId());
-                        subDto.setName(sub.getName());
-                        subDto.setDescription(sub.getDescription());
-                        subDto.setImagePath(sub.getImagePath());
-                        subDto.setImageLink(sub.getImageLink());
-                        subDto.setParentId(c.getId());
-                        subDto.setParent(new CategorySimpleDto.ParentCategoryDto(c.getId(), c.getName()));
-                        return subDto;
-                    })
-                    .collect(Collectors.toList()));
-        } else {
-            dto.setSubCategories(new ArrayList<>());
-        }
         return dto;
     }
 
     @GetMapping
-    public ResponseEntity<List<CategorySimpleDto>> list(@RequestParam(value = "rootsOnly", required = false, defaultValue = "false") boolean rootsOnly) {
+    public ResponseEntity<List<CategorySimpleDto>> list() {
         try {
-            List<Category> categories;
-            if (rootsOnly) {
-                categories = categoryRepository.findByParentIsNullAndDeletedFalse();
-            } else {
-                categories = categoryRepository.findByDeletedFalse();
-            }
+            List<Category> categories = categoryRepository.findByDeletedFalse();
             return ResponseEntity.ok(categories.stream().map(this::convertToDto).collect(Collectors.toList()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
-    }
-
-    @GetMapping("/{id}/subcategories")
-    public ResponseEntity<List<CategorySimpleDto>> subcategories(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryRepository.findByParent_IdAndDeletedFalse(id).stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList()));
     }
 
     @PostMapping
@@ -93,11 +60,6 @@ public class CategoryController {
         c.setImagePath((String) req.getOrDefault("imagePath", ""));
         c.setImageLink((String) req.getOrDefault("imageLink", ""));
 
-        if (req.containsKey("parentId") && req.get("parentId") != null) {
-            Long parentId = Long.valueOf(req.get("parentId").toString());
-            categoryRepository.findById(parentId).ifPresent(c::setParent);
-        }
-
         return ResponseEntity.ok(convertToDto(categoryRepository.save(c)));
     }
 
@@ -111,17 +73,6 @@ public class CategoryController {
         if (req.containsKey("description")) c.setDescription((String) req.get("description"));
         if (req.containsKey("imagePath")) c.setImagePath((String) req.get("imagePath"));
         if (req.containsKey("imageLink")) c.setImageLink((String) req.get("imageLink"));
-        
-        if (req.containsKey("parentId")) {
-            if (req.get("parentId") == null) {
-                c.setParent(null);
-            } else {
-                Long parentId = Long.valueOf(req.get("parentId").toString());
-                if (!parentId.equals(id)) { // Prevent self-referencing
-                    categoryRepository.findById(parentId).ifPresent(c::setParent);
-                }
-            }
-        }
         
         return ResponseEntity.ok(convertToDto(categoryRepository.save(c)));
     }
