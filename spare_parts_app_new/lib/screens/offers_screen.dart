@@ -232,6 +232,39 @@ class _OffersScreenState extends State<OffersScreen>
                         ],
                       ),
                       const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          if ((product.offerMinQty ?? 0) > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade100,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Min Qty: ${product.offerMinQty}',
+                                style: TextStyle(
+                                  color: Colors.orange.shade900,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          Text(
+                            product.stock > 0 ? 'In Stock' : 'Out of Stock',
+                            style: TextStyle(
+                              color: product.stock > 0
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(

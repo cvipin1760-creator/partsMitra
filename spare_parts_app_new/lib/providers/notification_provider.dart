@@ -12,6 +12,7 @@ class NotificationProvider with ChangeNotifier {
   List<Map<String, dynamic>> _notifications = [];
   bool _isConnected = false;
   int _unreadCount = 0;
+  bool _initialBannerShown = false;
 
   List<Map<String, dynamic>> get notifications => _notifications;
   bool get isConnected => _isConnected;
@@ -36,6 +37,7 @@ class NotificationProvider with ChangeNotifier {
   void init(String role, {int? userId}) {
     if (_isConnected) return;
 
+    NotificationService.subscribeToTopicsForRole(role);
     _wsService.connect(
       (data) {
         _notifications.insert(0, data);
@@ -75,6 +77,15 @@ class NotificationProvider with ChangeNotifier {
     final list = await _apiService.getMyNotifications(role, userId: userId);
     _notifications = list;
     _unreadCount = await _apiService.getUnreadCount(role);
+    if (!_initialBannerShown && _notifications.isNotEmpty) {
+      final n = _notifications.first;
+      final title = (n['title'] ?? '').toString();
+      final body = (n['message'] ?? n['body'] ?? '').toString();
+      if (title.isNotEmpty || body.isNotEmpty) {
+        NotificationService.showInAppMessage(title, body);
+        _initialBannerShown = true;
+      }
+    }
     notifyListeners();
   }
 

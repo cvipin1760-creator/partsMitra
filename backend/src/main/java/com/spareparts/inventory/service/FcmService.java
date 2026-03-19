@@ -1,7 +1,11 @@
 package com.spareparts.inventory.service;
 
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.messaging.*;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
 import com.spareparts.inventory.entity.Notification;
 import com.spareparts.inventory.entity.User;
 import com.spareparts.inventory.repository.NotificationRepository;
@@ -51,6 +55,12 @@ public class FcmService {
                                 .setTitle(title)
                                 .setBody(message)
                                 .build())
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setPriority(AndroidConfig.Priority.HIGH)
+                                .setNotification(AndroidNotification.builder()
+                                        .setChannelId("spare_parts_channel")
+                                        .build())
+                                .build())
                         .putData("route", "offers")
                         .putData("offerType", offerType != null ? offerType : "")
                         .putData("role", user.getRole().getName().name())
@@ -91,8 +101,14 @@ public class FcmService {
 
         // Using topics for broadcast
         Message fcmMessage = Message.builder()
-                .setTopic("all")
+                .setTopic("all-users")
                 .setNotification(fcmNotification)
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setNotification(AndroidNotification.builder()
+                                .setChannelId("spare_parts_channel")
+                                .build())
+                        .build())
                 .putData("route", "offers")
                 .putData("offerType", offerType != null ? offerType : "")
                 .putData("role", "ALL")
@@ -126,10 +142,16 @@ public class FcmService {
         }
         // Alternatively, use topics per role
         Message fcmMessage = Message.builder()
-                .setTopic(role)
+                .setTopic("role-" + role)
                 .setNotification(com.google.firebase.messaging.Notification.builder()
                         .setTitle(title)
                         .setBody(message)
+                        .build())
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setNotification(AndroidNotification.builder()
+                                .setChannelId("spare_parts_channel")
+                                .build())
                         .build())
                 .putData("route", "offers")
                 .putData("offerType", offerType != null ? offerType : "")
@@ -144,6 +166,48 @@ public class FcmService {
         } catch (FirebaseMessagingException e) {
             System.err.println("FcmService: Error sending FCM role message: " + e.getMessage());
         }
+    }
+
+    public void sendOrderStatusToUser(Long userId, Long orderId, String title, String message) {
+        // Save for in-app log
+        saveNotification(userId, title, message, false, null);
+        // WebSocket to user queue
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("title", title);
+        payload.put("message", message);
+        payload.put("orderId", orderId);
+        messagingTemplate.convertAndSendToUser(userId.toString(), "/queue/orders", payload);
+
+        if (FirebaseApp.getApps().isEmpty()) {
+            return;
+        }
+        userRepository.findById(userId).ifPresent(user -> {
+            if (user.getFcmToken() != null && !user.getFcmToken().isEmpty()) {
+                Message msg = Message.builder()
+                        .setToken(user.getFcmToken())
+                        .setNotification(com.google.firebase.messaging.Notification.builder()
+                                .setTitle(title)
+                                .setBody(message)
+                                .build())
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setPriority(AndroidConfig.Priority.HIGH)
+                                .setNotification(AndroidNotification.builder()
+                                        .setChannelId("spare_parts_channel")
+                                        .build())
+                                .build())
+                        .putData("route", "orders")
+                        .putData("orderId", orderId != null ? String.valueOf(orderId) : "")
+                        .putData("role", user.getRole().getName().name())
+                        .putData("title", title != null ? title : "")
+                        .putData("message", message != null ? message : "")
+                        .build();
+                try {
+                    FirebaseMessaging.getInstance().send(msg);
+                } catch (FirebaseMessagingException e) {
+                    System.err.println("FcmService: Error sending order status FCM: " + e.getMessage());
+                }
+            }
+        });
     }
 
     private Notification saveNotification(Long userId, String title, String message, boolean isBroadcast, String targetRole) {

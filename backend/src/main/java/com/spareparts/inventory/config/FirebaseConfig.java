@@ -39,8 +39,18 @@ public class FirebaseConfig {
                 return;
             }
 
+            // Read the content once to check for common mistakes (like using google-services.json instead of service account key)
+            byte[] content = serviceAccount.readAllBytes();
+            String jsonContent = new String(content, StandardCharsets.UTF_8);
+            if (jsonContent.contains("\"project_info\"") || jsonContent.contains("\"client\"")) {
+                System.err.println("FirebaseConfig: ERROR! It looks like you're using 'google-services.json' (the mobile client config) " +
+                        "instead of a 'Firebase Service Account Key' (the server/admin config).");
+                System.err.println("FirebaseConfig: Please download the correct JSON from: Firebase Console -> Project Settings -> Service Accounts -> Generate New Private Key.");
+                return;
+            }
+
             FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setCredentials(GoogleCredentials.fromStream(new ByteArrayInputStream(content)))
                     .build();
 
             if (FirebaseApp.getApps().isEmpty()) {

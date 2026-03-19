@@ -9,6 +9,7 @@ import com.spareparts.inventory.repository.OrderRequestRepository;
 import com.spareparts.inventory.repository.ProductRepository;
 import com.spareparts.inventory.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,12 @@ public class OrderService {
 
     @Autowired
     private OrderRequestRepository orderRequestRepository;
+    
+    @Autowired
+    private FcmService fcmService;
+    
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public CustomOrderRequestDto createCustomOrderRequest(String text, String photoPath, Long customerId) {
@@ -258,7 +265,20 @@ public class OrderService {
         }
         
         order = orderRepository.save(order);
-        return convertToDto(order);
+        
+        OrderDto dto = convertToDto(order);
+        
+        try {
+            messagingTemplate.convertAndSend("/topic/orders", dto);
+            messagingTemplate.convertAndSendToUser(order.getCustomer().getId().toString(), "/queue/orders", dto);
+        } catch (Exception ignored) {}
+        
+        try {
+            String title = "Order #" + order.getId() + " " + status.name().replace('_', ' ').toLowerCase();
+            fcmService.sendOrderStatusToUser(order.getCustomer().getId(), order.getId(), title, "Your order status is " + status.name());
+        } catch (Exception ignored) {}
+        
+        return dto;
     }
 
     @Transactional

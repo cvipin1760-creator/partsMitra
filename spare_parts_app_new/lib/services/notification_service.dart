@@ -40,6 +40,7 @@ class NotificationService {
         }
       },
     );
+    // Android 13+ permission prompt will be handled by the system when needed.
 
     // 2. Request FCM permissions
     NotificationSettings settings = await _fcm.requestPermission(
@@ -58,6 +59,7 @@ class NotificationService {
         String? route = message.data['route'];
         String? offerType = message.data['offerType'];
         String? role = message.data['role'];
+        final String? orderId = message.data['orderId'];
         final String? title =
             message.data['title'] ?? message.notification!.title;
         final String? msg =
@@ -69,6 +71,7 @@ class NotificationService {
             'route': route,
             'offerType': offerType,
             'role': role,
+            'orderId': orderId,
             'title': title,
             'message': msg,
             'imageUrl': imageUrl
@@ -78,6 +81,7 @@ class NotificationService {
             'route': 'offers',
             'role': role,
             'offerType': offerType,
+            'orderId': orderId,
             'title': title,
             'message': msg,
             'imageUrl': imageUrl
@@ -97,11 +101,17 @@ class NotificationService {
         String? route = message.data['route'] ?? 'offers';
         String? offerType = message.data['offerType'];
         String? role = message.data['role'];
+        final String? orderId = message.data['orderId'];
         final String? title =
             message.data['title'] ?? message.notification?.title;
         final String? msg =
             message.data['message'] ?? message.notification?.body;
         final String? imageUrl = message.data['imageUrl'];
+
+        if (route == 'orders' && orderId != null && orderId.isNotEmpty) {
+          _navKey!.currentState
+              ?.pushNamed('/orders', arguments: {'orderId': orderId});
+        }
         _navigateByRoleThenOffers(role, offerType, route,
             title: title, message: msg, imageUrl: imageUrl);
       }
@@ -113,11 +123,18 @@ class NotificationService {
       String? route = initialMessage.data['route'] ?? 'offers';
       String? offerType = initialMessage.data['offerType'];
       String? role = initialMessage.data['role'];
+      final String? orderId = initialMessage.data['orderId'];
       final String? title =
           initialMessage.data['title'] ?? initialMessage.notification?.title;
       final String? msg =
           initialMessage.data['message'] ?? initialMessage.notification?.body;
       final String? imageUrl = initialMessage.data['imageUrl'];
+
+      if (route == 'orders' && orderId != null && orderId.isNotEmpty) {
+        _navKey!.currentState
+            ?.pushNamed('/orders', arguments: {'orderId': orderId});
+      }
+
       _navigateByRoleThenOffers(role, offerType, route,
           title: title, message: msg, imageUrl: imageUrl);
     }
@@ -219,6 +236,23 @@ class NotificationService {
     if (_navKey == null) return;
     final nav = _navKey!.currentState;
     if (nav == null) return;
+    if (title != null || message != null) {
+      final ctx = _navKey!.currentContext;
+      if (ctx != null) {
+        final text = [if (title != null) title, if (message != null) message]
+            .where((e) => e != null && e.isNotEmpty)
+            .join(' — ');
+        if (text.isNotEmpty) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(
+              content: Text(text),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    }
     String? targetRoute = route;
     if ((targetRoute == null || targetRoute.isEmpty) && role != null) {
       targetRoute = 'offers';
@@ -278,6 +312,32 @@ class NotificationService {
     final remote = await fetchRemoteHistory(role, userId: userId);
     final local = await getLocalHistory();
     return [...remote.map((e) => e as Map<String, dynamic>), ...local];
+  }
+
+  static Future<void> subscribeToTopicsForRole(String role) async {
+    try {
+      await _fcm.subscribeToTopic('all-users');
+      await _fcm.subscribeToTopic('role-$role');
+    } catch (e) {
+      debugPrint('Error subscribing to topics: $e');
+    }
+  }
+
+  static void showInAppMessage(String title, String body) {
+    if (_navKey == null) return;
+    final ctx = _navKey!.currentContext;
+    if (ctx == null) return;
+    final text = [if (title.isNotEmpty) title, if (body.isNotEmpty) body]
+        .where((e) => e.isNotEmpty)
+        .join(' — ');
+    if (text.isEmpty) return;
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   Future<int> getUnreadCount(String role) async {

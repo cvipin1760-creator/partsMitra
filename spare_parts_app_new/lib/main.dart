@@ -17,6 +17,7 @@ import 'screens/reset_password_screen.dart';
 import 'utils/constants.dart';
 import 'screens/auth_home_screen.dart';
 import 'screens/offers_screen.dart';
+import 'screens/retailer_orders_screen.dart';
 
 import 'services/notification_service.dart';
 
@@ -133,6 +134,7 @@ class MyApp extends StatelessWidget {
           final email = ModalRoute.of(context)!.settings.arguments as String;
           return ResetPasswordScreen(email: email);
         },
+        '/orders': (context) => const RetailerOrdersScreen(),
         '/offers': (context) {
           final args = ModalRoute.of(context)!.settings.arguments;
           String? offerType;
