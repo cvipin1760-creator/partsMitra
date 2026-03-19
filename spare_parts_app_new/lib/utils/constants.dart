@@ -53,7 +53,7 @@ class Constants {
   static const String googleClientId =
       String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
   static const String wsEnableOverride =
-      String.fromEnvironment('ENABLE_WS', defaultValue: 'false');
+      String.fromEnvironment('ENABLE_WS', defaultValue: 'true');
   static bool get enableWebSocket => wsEnableOverride.toLowerCase() == 'true';
   static const String localOtpOverride =
       String.fromEnvironment('FORCE_LOCAL_OTP', defaultValue: 'false');

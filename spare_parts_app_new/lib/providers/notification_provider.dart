@@ -36,12 +36,16 @@ class NotificationProvider with ChangeNotifier {
   void init(String role, {int? userId}) {
     if (_isConnected) return;
 
-    _wsService.connect((data) {
-      _notifications.insert(0, data);
-      _unreadCount++;
-      _showLocalNotification(data);
-      notifyListeners();
-    });
+    _wsService.connect(
+      (data) {
+        _notifications.insert(0, data);
+        _unreadCount++;
+        _showLocalNotification(data);
+        notifyListeners();
+      },
+      role: role,
+      userId: userId,
+    );
     _isConnected = true;
     _fetchNotifications(role, userId: userId);
   }

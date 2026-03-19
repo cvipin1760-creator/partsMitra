@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 import 'package:spare_parts_app/services/auth_exceptions.dart';
 
@@ -21,6 +22,9 @@ class AuthProvider with ChangeNotifier {
   Future<void> _loadUser() async {
     try {
       _user = await _authService.getCurrentUser();
+      if (_user != null) {
+        _updateFcmToken();
+      }
     } catch (e) {
       debugPrint('AuthProvider: Error loading user: $e');
     } finally {
@@ -29,8 +33,20 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> _updateFcmToken() async {
+    if (_user != null) {
+      final token = await NotificationService.getToken();
+      if (token != null) {
+        await NotificationService.updateTokenOnServer(_user!.id, token);
+      }
+    }
+  }
+
   Future<void> refreshUser() async {
     _user = await _authService.getCurrentUser();
+    if (_user != null) {
+      _updateFcmToken();
+    }
     notifyListeners();
   }
 
@@ -39,6 +55,9 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     _user = await _authService.login(email, password);
+    if (_user != null) {
+      _updateFcmToken();
+    }
     _isLoading = false;
     notifyListeners();
 

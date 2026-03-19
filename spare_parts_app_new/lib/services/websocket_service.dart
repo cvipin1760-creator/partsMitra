@@ -6,7 +6,8 @@ import '../utils/constants.dart';
 class WebSocketService {
   StompClient? _client;
 
-  void connect(Function(Map<String, dynamic>) onMessageReceived) {
+  void connect(Function(Map<String, dynamic>) onMessageReceived,
+      {String? role, int? userId}) {
     if (!Constants.useRemote || !Constants.enableWebSocket) {
       if (kDebugMode) {
         debugPrint('WebSocket Mock: Standalone mode active');
@@ -27,7 +28,7 @@ class WebSocketService {
             debugPrint('WebSocket Connected: ${frame.headers}');
           }
 
-          // Subscribe to general notifications
+          // 1. Subscribe to general broadcast notifications
           _client?.subscribe(
             destination: '/topic/notifications',
             callback: (frame) {
@@ -38,9 +39,31 @@ class WebSocketService {
             },
           );
 
-          // You could also subscribe to user-specific or role-specific topics here
-          // For example, if you had the user's role:
-          // _client?.subscribe(destination: '/topic/notifications/ROLE_MECHANIC', ...);
+          // 2. Subscribe to role-specific notifications
+          if (role != null) {
+            _client?.subscribe(
+              destination: '/topic/notifications/$role',
+              callback: (frame) {
+                if (frame.body != null) {
+                  final data = jsonDecode(frame.body!);
+                  onMessageReceived(data);
+                }
+              },
+            );
+          }
+
+          // 3. Subscribe to user-specific notifications
+          if (userId != null) {
+            _client?.subscribe(
+              destination: '/user/$userId/queue/notifications',
+              callback: (frame) {
+                if (frame.body != null) {
+                  final data = jsonDecode(frame.body!);
+                  onMessageReceived(data);
+                }
+              },
+            );
+          }
         },
         onWebSocketError: (error) => debugPrint('WebSocket Error: $error'),
         onStompError: (frame) => debugPrint('STOMP Error: ${frame.body}'),

@@ -122,12 +122,22 @@ public class AuthController {
             
             return ResponseEntity.ok(new MessageResponse("OTP sent successfully to " + email));
         } catch (Exception e) {
-            System.err.println("FAILED to send email to " + email + ": " + e.getMessage());
+            System.err.println("CRITICAL: FAILED to send email to " + email);
+            System.err.println("Error Message: " + e.getMessage());
+            e.printStackTrace();
+            
             // Store the OTP anyway so the user can still use it if it shows up in backend logs
             OTP_STORAGE.put(email, otp);
             
-            // Return 200 OK but with a warning message.
-            return ResponseEntity.ok(new MessageResponse("OTP generated. (Note: Email delivery failed, please check server logs or contact support)"));
+            // Provide more specific guidance in the response
+            String userMessage = "OTP generated, but email delivery failed. ";
+            if (e.getMessage() != null && e.getMessage().contains("Username and Password not accepted")) {
+                userMessage += "Reason: SMTP Authentication failed. Please check Gmail App Password.";
+            } else {
+                userMessage += "Please check server logs or contact support.";
+            }
+            
+            return ResponseEntity.status(500).body(new MessageResponse(userMessage));
         }
     }
 
@@ -252,13 +262,24 @@ public class AuthController {
     }
 
     @PostMapping("/update-fcm-token")
-    public ResponseEntity<?> updateFcmToken(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        String token = body.get("token");
-        if (email == null || token == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Email and token are required."));
+    public ResponseEntity<?> updateFcmToken(@RequestBody Map<String, Object> body) {
+        Object userIdObj = body.get("userId");
+        String token = (String) body.get("token");
+        
+        if (userIdObj == null || token == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("User ID and token are required."));
         }
-        userRepository.findByEmailAndDeletedFalse(email).ifPresent(user -> {
+
+        Long userId;
+        if (userIdObj instanceof Integer) {
+            userId = ((Integer) userIdObj).longValue();
+        } else if (userIdObj instanceof Long) {
+            userId = (Long) userIdObj;
+        } else {
+            return ResponseEntity.badRequest().body(new MessageResponse("Invalid User ID format."));
+        }
+
+        userRepository.findById(userId).ifPresent(user -> {
             user.setFcmToken(token);
             userRepository.save(user);
         });

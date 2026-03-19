@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -8,14 +9,63 @@ import '../utils/constants.dart';
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   static Future<void> initialize() async {
-    // Configure local notifications
+    // 1. Configure local notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
     await _localNotifications.initialize(initializationSettings);
+
+    // 2. Request FCM permissions
+    NotificationSettings settings = await _fcm.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      if (kDebugMode) debugPrint('User granted notification permission');
+    }
+
+    // 3. Handle foreground FCM messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        showLocalNotification(
+          message.notification!.title ?? 'New Notification',
+          message.notification!.body ?? '',
+        );
+      }
+    });
+  }
+
+  static Future<String?> getToken() async {
+    try {
+      return await _fcm.getToken();
+    } catch (e) {
+      debugPrint("Error getting FCM token: $e");
+      return null;
+    }
+  }
+
+  static Future<void> updateTokenOnServer(int userId, String token) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${Constants.baseUrl}/auth/update-fcm-token"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "userId": userId,
+          "token": token,
+        }),
+      );
+      if (response.statusCode == 200) {
+        if (kDebugMode) debugPrint("FCM Token updated on server");
+      }
+    } catch (e) {
+      debugPrint("Failed to update FCM token on server: $e");
+    }
   }
 
   static void showLocalNotification(String title, String body) async {

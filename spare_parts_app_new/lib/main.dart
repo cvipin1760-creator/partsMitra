@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/language_provider.dart';
@@ -18,10 +19,17 @@ import 'screens/auth_home_screen.dart';
 
 import 'services/notification_service.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("Handling a background message: ${message.messageId}");
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (e) {
     debugPrint("Firebase initialization failed: $e");
   }
@@ -140,7 +148,7 @@ class AuthWrapper extends StatelessWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final np = Provider.of<NotificationProvider>(context, listen: false);
       if (!np.isConnected) {
-        np.init(authProvider.user!.roles.first);
+        np.init(authProvider.user!.roles.first, userId: authProvider.user!.id);
       }
     });
 

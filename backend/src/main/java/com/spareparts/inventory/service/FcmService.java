@@ -7,9 +7,12 @@ import com.spareparts.inventory.entity.User;
 import com.spareparts.inventory.repository.NotificationRepository;
 import com.spareparts.inventory.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,9 +24,20 @@ public class FcmService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
     public void sendToUser(Long userId, String title, String message) {
         // Always save for in-app notifications
-        saveNotification(userId, title, message, false, null);
+        Notification notification = saveNotification(userId, title, message, false, null);
+
+        // Push to WebSocket for real-time in-app delivery
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", notification.getId());
+        payload.put("title", title);
+        payload.put("message", message);
+        payload.put("createdAt", notification.getCreatedAt());
+        messagingTemplate.convertAndSendToUser(userId.toString(), "/queue/notifications", payload);
 
         if (FirebaseApp.getApps().isEmpty()) {
             System.out.println("FcmService: Firebase not initialized, skipping FCM notification.");
@@ -50,7 +64,15 @@ public class FcmService {
 
     public void sendBroadcast(String title, String message) {
         // Always save for in-app notifications
-        saveNotification(null, title, message, true, "ALL");
+        Notification notification = saveNotification(null, title, message, true, "ALL");
+
+        // Push to WebSocket for real-time in-app delivery
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", notification.getId());
+        payload.put("title", title);
+        payload.put("message", message);
+        payload.put("createdAt", notification.getCreatedAt());
+        messagingTemplate.convertAndSend("/topic/notifications", payload);
 
         if (FirebaseApp.getApps().isEmpty()) {
             System.out.println("FcmService: Firebase not initialized, skipping FCM broadcast.");
@@ -76,7 +98,15 @@ public class FcmService {
 
     public void sendToRole(String role, String title, String message) {
         // Always save for in-app notifications
-        saveNotification(null, title, message, false, role);
+        Notification notification = saveNotification(null, title, message, false, role);
+
+        // Push to WebSocket for real-time in-app delivery
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", notification.getId());
+        payload.put("title", title);
+        payload.put("message", message);
+        payload.put("createdAt", notification.getCreatedAt());
+        messagingTemplate.convertAndSend("/topic/notifications/" + role, payload);
 
         if (FirebaseApp.getApps().isEmpty()) {
             System.out.println("FcmService: Firebase not initialized, skipping FCM role notification.");
@@ -98,13 +128,13 @@ public class FcmService {
         }
     }
 
-    private void saveNotification(Long userId, String title, String message, boolean isBroadcast, String targetRole) {
+    private Notification saveNotification(Long userId, String title, String message, boolean isBroadcast, String targetRole) {
         Notification notification = new Notification();
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setUserId(userId);
         notification.setBroadcast(isBroadcast);
         notification.setTargetRole(targetRole);
-        notificationRepository.save(notification);
+        return notificationRepository.save(notification);
     }
 }
