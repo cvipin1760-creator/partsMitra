@@ -19,6 +19,7 @@ import { ROLE_ADMIN, ROLE_SUPER_MANAGER, ROLE_WHOLESALER, ROLE_STAFF } from './s
 import AIChatbot from './components/AIChatbot';
 import AdminCategories from './pages/AdminCategories';
 import MobileDashboard from './pages/MobileDashboard';
+import { ROLE_MECHANIC, ROLE_RETAILER } from './services/constants';
 
 const App: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -34,6 +35,47 @@ const App: React.FC = () => {
 
   const isAdminOrSuper = currentUser?.roles?.includes(ROLE_ADMIN) || currentUser?.roles?.includes(ROLE_SUPER_MANAGER);
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password';
+
+  useEffect(() => {
+    // Listen to foreground webpush events
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        route?: string;
+        offerType?: string;
+        role?: string;
+        title?: string;
+        message?: string;
+        imageUrl?: string;
+      };
+      if (!detail) return;
+      const role = (detail.role || '').toUpperCase();
+      if (role === ROLE_ADMIN || role === ROLE_SUPER_MANAGER) {
+        navigate('/admin', { state: detail });
+      } else if (role === ROLE_WHOLESALER) {
+        navigate('/wholesaler', { state: detail });
+      } else if (role === ROLE_STAFF) {
+        navigate('/staff', { state: detail });
+      } else if (role === ROLE_MECHANIC) {
+        navigate('/dashboard', { state: detail }); // mobile dashboard covers mechanic
+      } else if (role === ROLE_RETAILER) {
+        navigate('/shop', { state: detail });
+      }
+      if ((detail.route || 'offers') === 'offers') {
+        navigate('/shop', { state: detail }); // use Shop as offers destination in web
+      }
+    };
+    window.addEventListener('webpush' as any, handler);
+    // Also listen to SW postMessage clicks
+    navigator.serviceWorker?.addEventListener('message', (event: MessageEvent) => {
+      if (event.data?.type === 'webpush') {
+        const detail = event.data.detail;
+        window.dispatchEvent(new CustomEvent('webpush', { detail }));
+      }
+    });
+    return () => {
+      window.removeEventListener('webpush' as any, handler);
+    };
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

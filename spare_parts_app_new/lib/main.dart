@@ -16,6 +16,7 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'utils/constants.dart';
 import 'screens/auth_home_screen.dart';
+import 'screens/offers_screen.dart';
 
 import 'services/notification_service.dart';
 
@@ -24,6 +25,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("Handling a background message: ${message.messageId}");
 }
+
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,7 @@ void main() async {
     debugPrint("Firebase initialization failed: $e");
   }
   await NotificationService.initialize();
+  NotificationService.configureNavigationKey(_navigatorKey);
   runApp(
     MultiProvider(
       providers: [
@@ -53,6 +57,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Spares Hub',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -128,6 +133,20 @@ class MyApp extends StatelessWidget {
           final email = ModalRoute.of(context)!.settings.arguments as String;
           return ResetPasswordScreen(email: email);
         },
+        '/offers': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments;
+          String? offerType;
+          if (args is Map) {
+            final dynamic t = args['offerType'];
+            if (t is String) offerType = t;
+          }
+          return OffersScreen(initialOfferType: offerType);
+        },
+        '/dashboard/retailer': (context) => const RetailerDashboard(),
+        '/dashboard/mechanic': (context) => const MechanicDashboard(),
+        '/dashboard/wholesaler': (context) => const WholesalerDashboard(),
+        '/dashboard/admin': (context) => const AdminDashboard(),
+        '/dashboard/staff': (context) => const StaffDashboard(),
       },
     );
   }

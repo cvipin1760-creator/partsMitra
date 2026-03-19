@@ -36,7 +36,9 @@ public class NotificationController {
     public ResponseEntity<?> sendBroadcast(@RequestBody Map<String, String> request) {
         String title = request.get("title");
         String message = request.get("message");
-        fcmService.sendBroadcast(title, message);
+        String offerType = request.get("offerType");
+        String imageUrl = request.get("imageUrl");
+        fcmService.sendBroadcast(title, message, offerType, imageUrl);
         return ResponseEntity.ok("Broadcast notification sent successfully");
     }
 
@@ -45,7 +47,9 @@ public class NotificationController {
     public ResponseEntity<?> sendToUser(@PathVariable Long userId, @RequestBody Map<String, String> request) {
         String title = request.get("title");
         String message = request.get("message");
-        fcmService.sendToUser(userId, title, message);
+        String offerType = request.get("offerType");
+        String imageUrl = request.get("imageUrl");
+        fcmService.sendToUser(userId, title, message, offerType, imageUrl);
         return ResponseEntity.ok("Targeted notification sent successfully");
     }
 
@@ -54,7 +58,9 @@ public class NotificationController {
     public ResponseEntity<?> sendToRole(@PathVariable String role, @RequestBody Map<String, String> request) {
         String title = request.get("title");
         String message = request.get("message");
-        fcmService.sendToRole(role, title, message);
+        String offerType = request.get("offerType");
+        String imageUrl = request.get("imageUrl");
+        fcmService.sendToRole(role, title, message, offerType, imageUrl);
         return ResponseEntity.ok("Role-based notification sent successfully");
     }
 }

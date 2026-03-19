@@ -803,13 +803,14 @@ class ProductService {
   }
 
   Future<bool> setProductOffer(int productId, String offerType,
-      {bool notifyWhatsApp = false, bool notifyInApp = true}) async {
+      {bool notifyWhatsApp = false,
+      bool notifyInApp = true,
+      int? minQty}) async {
     try {
       if (Constants.useRemote) {
-        await _remote.postJson(
-          '/admin/products/$productId/offer?offerType=$offerType&notifyWhatsApp=$notifyWhatsApp&notifyInApp=$notifyInApp',
-          {},
-        );
+        final path =
+            '/admin/products/$productId/offer?offerType=$offerType&notifyWhatsApp=$notifyWhatsApp&notifyInApp=$notifyInApp${minQty != null ? '&minQty=$minQty' : ''}';
+        await _remote.postJson(path, {});
         return true;
       }
       return false;

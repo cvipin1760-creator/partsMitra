@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,14 +11,35 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  static GlobalKey<NavigatorState>? _navKey;
+
+  static void configureNavigationKey(GlobalKey<NavigatorState> key) {
+    _navKey = key;
+  }
 
   static Future<void> initialize() async {
     // 1. Configure local notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
-    await _localNotifications.initialize(initializationSettings);
+    final InitializationSettings initializationSettings =
+        const InitializationSettings(android: initializationSettingsAndroid);
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (_navKey != null && payload != null) {
+          try {
+            final data = jsonDecode(payload) as Map<String, dynamic>;
+            final route = data['route'] as String?;
+            final offerType = data['offerType'] as String?;
+            final role = data['role'] as String?;
+            _navigateByRoleThenOffers(role, offerType, route);
+          } catch (_) {
+            _navKey!.currentState?.pushNamed('/offers');
+          }
+        }
+      },
+    );
 
     // 2. Request FCM permissions
     NotificationSettings settings = await _fcm.requestPermission(
@@ -33,12 +55,72 @@ class NotificationService {
     // 3. Handle foreground FCM messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (message.notification != null) {
+        String? route = message.data['route'];
+        String? offerType = message.data['offerType'];
+        String? role = message.data['role'];
+        final String? title =
+            message.data['title'] ?? message.notification!.title;
+        final String? msg =
+            message.data['message'] ?? message.notification!.body;
+        final String? imageUrl = message.data['imageUrl'];
+        String payloadStr;
+        if (route != null) {
+          payloadStr = jsonEncode({
+            'route': route,
+            'offerType': offerType,
+            'role': role,
+            'title': title,
+            'message': msg,
+            'imageUrl': imageUrl
+          });
+        } else {
+          payloadStr = jsonEncode({
+            'route': 'offers',
+            'role': role,
+            'offerType': offerType,
+            'title': title,
+            'message': msg,
+            'imageUrl': imageUrl
+          });
+        }
         showLocalNotification(
-          message.notification!.title ?? 'New Notification',
-          message.notification!.body ?? '',
+          title ?? 'New Notification',
+          msg ?? '',
+          payload: payloadStr,
         );
       }
     });
+
+    // 4. Handle notification taps when app is in background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      if (_navKey != null) {
+        String? route = message.data['route'] ?? 'offers';
+        String? offerType = message.data['offerType'];
+        String? role = message.data['role'];
+        final String? title =
+            message.data['title'] ?? message.notification?.title;
+        final String? msg =
+            message.data['message'] ?? message.notification?.body;
+        final String? imageUrl = message.data['imageUrl'];
+        _navigateByRoleThenOffers(role, offerType, route,
+            title: title, message: msg, imageUrl: imageUrl);
+      }
+    });
+
+    // 5. If app was terminated and opened via notification
+    final initialMessage = await _fcm.getInitialMessage();
+    if (initialMessage != null && _navKey != null) {
+      String? route = initialMessage.data['route'] ?? 'offers';
+      String? offerType = initialMessage.data['offerType'];
+      String? role = initialMessage.data['role'];
+      final String? title =
+          initialMessage.data['title'] ?? initialMessage.notification?.title;
+      final String? msg =
+          initialMessage.data['message'] ?? initialMessage.notification?.body;
+      final String? imageUrl = initialMessage.data['imageUrl'];
+      _navigateByRoleThenOffers(role, offerType, route,
+          title: title, message: msg, imageUrl: imageUrl);
+    }
   }
 
   static Future<String?> getToken() async {
@@ -68,7 +150,8 @@ class NotificationService {
     }
   }
 
-  static void showLocalNotification(String title, String body) async {
+  static void showLocalNotification(String title, String body,
+      {String? payload}) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'spare_parts_channel',
@@ -83,6 +166,7 @@ class NotificationService {
       title,
       body,
       platformChannelSpecifics,
+      payload: payload,
     );
     await _saveNotificationLocally(title, body);
   }
@@ -129,6 +213,65 @@ class NotificationService {
     return [];
   }
 
+  static void _navigateByRoleThenOffers(
+      String? role, String? offerType, String? route,
+      {String? title, String? message, String? imageUrl}) {
+    if (_navKey == null) return;
+    final nav = _navKey!.currentState;
+    if (nav == null) return;
+    String? targetRoute = route;
+    if ((targetRoute == null || targetRoute.isEmpty) && role != null) {
+      targetRoute = 'offers';
+    }
+    if (role != null) {
+      final r = role.toUpperCase();
+      if (r == 'RETAILER') {
+        nav.pushNamed('/dashboard/retailer', arguments: {
+          'offerType': offerType,
+          'title': title,
+          'message': message,
+          'imageUrl': imageUrl
+        });
+      } else if (r == 'MECHANIC') {
+        nav.pushNamed('/dashboard/mechanic', arguments: {
+          'offerType': offerType,
+          'title': title,
+          'message': message,
+          'imageUrl': imageUrl
+        });
+      } else if (r == 'WHOLESALER') {
+        nav.pushNamed('/dashboard/wholesaler', arguments: {
+          'offerType': offerType,
+          'title': title,
+          'message': message,
+          'imageUrl': imageUrl
+        });
+      } else if (r == 'ADMIN' || r == 'SUPER_MANAGER') {
+        nav.pushNamed('/dashboard/admin', arguments: {
+          'offerType': offerType,
+          'title': title,
+          'message': message,
+          'imageUrl': imageUrl
+        });
+      } else if (r == 'STAFF') {
+        nav.pushNamed('/dashboard/staff', arguments: {
+          'offerType': offerType,
+          'title': title,
+          'message': message,
+          'imageUrl': imageUrl
+        });
+      }
+    }
+    if (targetRoute == 'offers') {
+      nav.pushNamed('/offers', arguments: {
+        'offerType': offerType,
+        'title': title,
+        'message': message,
+        'imageUrl': imageUrl
+      });
+    }
+  }
+
   // Compatibility methods for NotificationProvider
   Future<List<Map<String, dynamic>>> getMyNotifications(String role,
       {int? userId}) async {
@@ -146,7 +289,7 @@ class NotificationService {
   }
 
   Future<void> sendNotification(String title, String message, String targetRole,
-      {String? imageUrl}) async {
+      {String? imageUrl, String? offerType, String route = 'offers'}) async {
     try {
       String endpoint = targetRole == 'ALL'
           ? "/notifications/send/broadcast"
@@ -158,6 +301,8 @@ class NotificationService {
         body: jsonEncode({
           "title": title,
           "message": message,
+          "route": route,
+          if (offerType != null) "offerType": offerType,
           if (imageUrl != null) "imageUrl": imageUrl,
         }),
       );

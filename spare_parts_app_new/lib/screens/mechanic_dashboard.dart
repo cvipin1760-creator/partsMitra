@@ -21,6 +21,8 @@ class MechanicDashboard extends StatefulWidget {
 
 class _MechanicDashboardState extends State<MechanicDashboard> {
   int _selectedIndex = 0;
+  String? _incomingOfferType;
+  bool _bannerShown = false;
 
   static const List<Widget> _widgetOptions = <Widget>[
     MechanicSearchScreen(),
@@ -38,6 +40,71 @@ class _MechanicDashboardState extends State<MechanicDashboard> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (!_bannerShown && args is Map && (args['offerType'] != null)) {
+      _incomingOfferType = args['offerType'] as String?;
+      final String? title = args['title'] as String?;
+      final String? message = args['message'] as String?;
+      final String? imageUrl = args['imageUrl'] as String?;
+      _bannerShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showMaterialBanner(
+          MaterialBanner(
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title ??
+                      ((_incomingOfferType?.toUpperCase() == 'WEEKLY')
+                          ? 'Weekly offers are live!'
+                          : 'Daily offers are live!'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (message != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(message),
+                  ),
+                if (imageUrl != null && imageUrl.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        imageUrl,
+                        height: 80,
+                        width: double.maxFinite,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.broken_image),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            leading: const Icon(Icons.local_offer),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                  Navigator.of(context).pushNamed('/offers',
+                      arguments: {'offerType': _incomingOfferType});
+                },
+                child: const Text('View Offer'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                },
+                child: const Text('Dismiss'),
+              ),
+            ],
+            backgroundColor: Colors.orange.shade50,
+          ),
+        );
+      });
+    }
 
     return PopScope(
       canPop: false,

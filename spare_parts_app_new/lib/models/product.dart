@@ -19,6 +19,7 @@ class Product {
   final String? categoryImagePath;
   final String? categoryImageLink;
   final String? offerType;
+  final int? offerMinQty;
 
   Product({
     required this.id,
@@ -41,6 +42,7 @@ class Product {
     this.categoryImagePath,
     this.categoryImageLink,
     this.offerType,
+    this.offerMinQty,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -75,6 +77,7 @@ class Product {
       categoryImagePath: json['categoryImagePath'],
       categoryImageLink: json['categoryImageLink'],
       offerType: json['offerType'],
+      offerMinQty: (json['offerMinQty'] as num?)?.toInt(),
     );
   }
 
@@ -100,6 +103,7 @@ class Product {
       'categoryImagePath': categoryImagePath,
       'categoryImageLink': categoryImageLink,
       'offerType': offerType,
+      'offerMinQty': offerMinQty,
     };
   }
 
@@ -121,6 +125,7 @@ class Product {
     int? categoryId,
     String? categoryName,
     String? offerType,
+    int? offerMinQty,
   }) {
     return Product(
       id: id ?? this.id,
@@ -140,6 +145,7 @@ class Product {
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
       offerType: offerType ?? this.offerType,
+      offerMinQty: offerMinQty ?? this.offerMinQty,
     );
   }
 }

@@ -115,6 +115,7 @@ public class ProductService extends ProductSubject {
         product.setImagePath(productDto.getImagePath());
         product.setImageLink(productDto.getImageLink());
         product.setDescription(productDto.getDescription());
+        product.setOfferMinQty(productDto.getOfferMinQty());
         product.setWholesaler(wholesaler);
         
         // Auto-categorization logic
@@ -273,6 +274,9 @@ public class ProductService extends ProductSubject {
         if (productDto.getOfferType() != null) {
             product.setOfferType(Product.OfferType.valueOf(productDto.getOfferType()));
         }
+        if (productDto.getOfferMinQty() != null) {
+            product.setOfferMinQty(productDto.getOfferMinQty());
+        }
 
         if (productDto.getCategoryId() != null) {
             categoryRepository.findById(productDto.getCategoryId()).ifPresent(product::setCategory);
@@ -293,12 +297,13 @@ public class ProductService extends ProductSubject {
     }
 
     @Transactional
-    public void setProductOffer(Long productId, String offerType, boolean notifyWhatsApp, boolean notifyInApp) {
+    public void setProductOffer(Long productId, String offerType, boolean notifyWhatsApp, boolean notifyInApp, Integer minQty) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         
         Product.OfferType type = Product.OfferType.valueOf(offerType.toUpperCase());
         product.setOfferType(type);
+        product.setOfferMinQty(minQty);
         productRepository.save(product);
 
         if (type != Product.OfferType.NONE) {
@@ -367,6 +372,7 @@ public class ProductService extends ProductSubject {
         dto.setDescription(product.getDescription());
         dto.setWholesalerId(product.getWholesaler().getId());
         dto.setOfferType(product.getOfferType() != null ? product.getOfferType().name() : null);
+        dto.setOfferMinQty(product.getOfferMinQty());
         if (product.getCategory() != null) {
             dto.setCategoryId(product.getCategory().getId());
             dto.setCategoryName(product.getCategory().getName());

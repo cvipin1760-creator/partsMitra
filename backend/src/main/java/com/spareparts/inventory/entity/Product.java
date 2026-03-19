@@ -96,6 +96,9 @@ public class Product {
     @Column(name = "offer_type", length = 20)
     private OfferType offerType = OfferType.NONE;
 
+    @Column(name = "offer_min_qty", columnDefinition = "integer")
+    private Integer offerMinQty;
+
     public enum OfferType {
         NONE, DAILY, WEEKLY
     }

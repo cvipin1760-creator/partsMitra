@@ -27,7 +27,7 @@ public class FcmService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    public void sendToUser(Long userId, String title, String message) {
+    public void sendToUser(Long userId, String title, String message, String offerType, String imageUrl) {
         // Always save for in-app notifications
         Notification notification = saveNotification(userId, title, message, false, null);
 
@@ -51,6 +51,12 @@ public class FcmService {
                                 .setTitle(title)
                                 .setBody(message)
                                 .build())
+                        .putData("route", "offers")
+                        .putData("offerType", offerType != null ? offerType : "")
+                        .putData("role", user.getRole().getName().name())
+                        .putData("title", title != null ? title : "")
+                        .putData("message", message != null ? message : "")
+                        .putData("imageUrl", imageUrl != null ? imageUrl : "")
                         .build();
 
                 try {
@@ -62,7 +68,7 @@ public class FcmService {
         });
     }
 
-    public void sendBroadcast(String title, String message) {
+    public void sendBroadcast(String title, String message, String offerType, String imageUrl) {
         // Always save for in-app notifications
         Notification notification = saveNotification(null, title, message, true, "ALL");
 
@@ -87,6 +93,12 @@ public class FcmService {
         Message fcmMessage = Message.builder()
                 .setTopic("all")
                 .setNotification(fcmNotification)
+                .putData("route", "offers")
+                .putData("offerType", offerType != null ? offerType : "")
+                .putData("role", "ALL")
+                .putData("title", title != null ? title : "")
+                .putData("message", message != null ? message : "")
+                .putData("imageUrl", imageUrl != null ? imageUrl : "")
                 .build();
 
         try {
@@ -96,7 +108,7 @@ public class FcmService {
         }
     }
 
-    public void sendToRole(String role, String title, String message) {
+    public void sendToRole(String role, String title, String message, String offerType, String imageUrl) {
         // Always save for in-app notifications
         Notification notification = saveNotification(null, title, message, false, role);
 
@@ -119,6 +131,12 @@ public class FcmService {
                         .setTitle(title)
                         .setBody(message)
                         .build())
+                .putData("route", "offers")
+                .putData("offerType", offerType != null ? offerType : "")
+                .putData("role", role)
+                .putData("title", title != null ? title : "")
+                .putData("message", message != null ? message : "")
+                .putData("imageUrl", imageUrl != null ? imageUrl : "")
                 .build();
 
         try {

@@ -51,4 +51,5 @@ public class ProductDto {
     private String categoryImageLink;
     
     private String offerType;
+    private Integer offerMinQty;
 }

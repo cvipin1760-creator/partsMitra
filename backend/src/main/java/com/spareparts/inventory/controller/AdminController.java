@@ -202,8 +202,9 @@ public class AdminController {
             @PathVariable Long productId,
             @RequestParam String offerType,
             @RequestParam(defaultValue = "false") boolean notifyWhatsApp,
-            @RequestParam(defaultValue = "true") boolean notifyInApp) {
-        productService.setProductOffer(productId, offerType, notifyWhatsApp, notifyInApp);
+            @RequestParam(defaultValue = "true") boolean notifyInApp,
+            @RequestParam(required = false) Integer minQty) {
+        productService.setProductOffer(productId, offerType, notifyWhatsApp, notifyInApp, minQty);
         return ResponseEntity.ok().build();
     }
 

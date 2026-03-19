@@ -9,7 +9,8 @@ import '../utils/image_utils.dart';
 import '../widgets/notification_badge.dart';
 
 class OffersScreen extends StatefulWidget {
-  const OffersScreen({super.key});
+  final String? initialOfferType;
+  const OffersScreen({super.key, this.initialOfferType});
 
   @override
   State<OffersScreen> createState() => _OffersScreenState();
@@ -28,7 +29,8 @@ class _OffersScreenState extends State<OffersScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    final idx = (widget.initialOfferType?.toUpperCase() == 'WEEKLY') ? 1 : 0;
+    _tabController = TabController(length: 2, vsync: this, initialIndex: idx);
     _fetchDailyOffers();
     _fetchWeeklyOffers();
   }

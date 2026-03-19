@@ -56,6 +56,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   bool _aiEnabled = true;
   bool _voiceEnabled = true;
+  String? _incomingOfferType;
+  bool _bannerShown = false;
   final List<Widget> _widgetOptions = [
     const AdminOverviewScreen(),
     const OffersScreen(),
@@ -75,6 +77,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final messageController = TextEditingController();
     final imageUrlController = TextEditingController();
     String targetRole = 'ALL';
+    String offerType = 'DAILY';
     bool isUploading = false;
 
     showDialog(
@@ -182,6 +185,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                   onChanged: (val) => targetRole = val!,
                 ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: offerType,
+                  items: const [
+                    DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
+                    DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
+                  ],
+                  onChanged: (val) => offerType = val ?? 'DAILY',
+                  decoration:
+                      const InputDecoration(labelText: 'Offer Type (Optional)'),
+                ),
               ],
             ),
           ),
@@ -209,6 +223,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         imageUrl: imageUrlController.text.isNotEmpty
                             ? imageUrlController.text
                             : null,
+                        offerType: offerType,
+                        route: 'offers',
                       );
                       if (mounted) {
                         Navigator.pop(ctx);
@@ -229,6 +245,71 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (!_bannerShown && args is Map && (args['offerType'] != null)) {
+      _incomingOfferType = args['offerType'] as String?;
+      final String? title = args['title'] as String?;
+      final String? message = args['message'] as String?;
+      final String? imageUrl = args['imageUrl'] as String?;
+      _bannerShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showMaterialBanner(
+          MaterialBanner(
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title ??
+                      ((_incomingOfferType?.toUpperCase() == 'WEEKLY')
+                          ? 'Weekly offers are live!'
+                          : 'Daily offers are live!'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (message != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(message),
+                  ),
+                if (imageUrl != null && imageUrl.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        imageUrl,
+                        height: 80,
+                        width: double.maxFinite,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.broken_image),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            leading: const Icon(Icons.local_offer),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                  Navigator.of(context).pushNamed('/offers',
+                      arguments: {'offerType': _incomingOfferType});
+                },
+                child: const Text('View Offer'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                },
+                child: const Text('Dismiss'),
+              ),
+            ],
+            backgroundColor: Colors.orange.shade50,
+          ),
+        );
+      });
+    }
     // Lazy-load settings the first time build runs if not yet loaded
     SettingsService.isAiChatbotEnabled().then((v) {
       if (mounted && _aiEnabled != v) setState(() => _aiEnabled = v);

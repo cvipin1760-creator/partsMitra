@@ -26,6 +26,7 @@ class CartProvider with ChangeNotifier {
           productName: existing.productName,
           quantity: existing.quantity + 1,
           price: existing.price,
+          minQty: existing.minQty,
         ),
       );
     } else {
@@ -34,8 +35,13 @@ class CartProvider with ChangeNotifier {
         () => OrderItem(
           productId: product.id,
           productName: product.name,
-          quantity: 1,
+          quantity: (product.offerType != null &&
+                  product.offerType != 'NONE' &&
+                  (product.offerMinQty ?? 0) > 0)
+              ? (product.offerMinQty ?? 1)
+              : 1,
           price: price,
+          minQty: product.offerMinQty,
         ),
       );
     }
@@ -63,7 +69,8 @@ class CartProvider with ChangeNotifier {
 
   void decrementItem(int productId) {
     if (!_items.containsKey(productId)) return;
-    if (_items[productId]!.quantity > 1) {
+    final minQty = _items[productId]!.minQty ?? 1;
+    if (_items[productId]!.quantity > minQty) {
       _items.update(
         productId,
         (existing) => OrderItem(
@@ -71,10 +78,11 @@ class CartProvider with ChangeNotifier {
           productName: existing.productName,
           quantity: existing.quantity - 1,
           price: existing.price,
+          minQty: existing.minQty,
         ),
       );
     } else {
-      _items.remove(productId);
+      // keep at minimum quantity for offer; do not remove
     }
     notifyListeners();
   }
