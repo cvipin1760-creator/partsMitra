@@ -91,4 +91,12 @@ public class Product {
 
     @Column(name = "deleted", nullable = false, columnDefinition = "boolean default false")
     private boolean deleted = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "offer_type", length = 20)
+    private OfferType offerType = OfferType.NONE;
+
+    public enum OfferType {
+        NONE, DAILY, WEEKLY
+    }
 }

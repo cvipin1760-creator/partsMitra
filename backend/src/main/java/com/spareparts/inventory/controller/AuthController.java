@@ -1,4 +1,3 @@
-
 package com.spareparts.inventory.controller;
 
 import com.spareparts.inventory.dto.JwtResponse;
@@ -68,12 +67,31 @@ public class AuthController {
         String purpose = body.getOrDefault("purpose", "login").toLowerCase();
         
         if (email == null || !email.contains("@")) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Invalid email address."));
+            // If it's a mobile number (no @), we can't easily check userRepository by email
+            // But for now, let's assume it's always an email or formatted as one
+            if (email == null || email.isEmpty()) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Invalid identifier."));
+            }
+        }
+
+        // For signup, ensure user does NOT exist
+        if ("signup".equals(purpose)) {
+            if (userRepository.existsByEmail(email)) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+            }
         }
 
         // For login/reset flows, ensure user exists
         if ("login".equals(purpose) || "reset".equals(purpose)) {
-            if (!userRepository.existsByEmail(email)) {
+            // Handle both email and mobile-formatted email (e.g., 1234567890@spares.hub)
+            boolean exists = userRepository.existsByEmail(email);
+            if (!exists && email.contains("@")) {
+                // Also check if it might be a username if that's allowed, 
+                // but usually it's email.
+                exists = userRepository.existsByUsername(email);
+            }
+            
+            if (!exists) {
                 return ResponseEntity.status(404).body(new MessageResponse("User does not exist."));
             }
         }
@@ -113,9 +131,8 @@ public class AuthController {
             // Store the OTP anyway so the user can still use it if it shows up in backend logs
             OTP_STORAGE.put(email, otp);
             
-            // Return 200 OK but with a warning message. This allows the frontend to show the OTP field
-            // so the user can still enter the OTP if they have access to server logs or if it's a known test OTP.
-            return ResponseEntity.ok(new MessageResponse("OTP generated. (Note: Email delivery failed, please check server logs or contact support if you didn't receive it)"));
+            // Return 200 OK but with a warning message.
+            return ResponseEntity.ok(new MessageResponse("OTP generated. (Note: Email delivery failed, please check server logs or contact support)"));
         }
     }
 
@@ -133,58 +150,55 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
         }
 
-        // Remove OTP after use
-        OTP_STORAGE.remove(email);
-
         // Find user
         java.util.Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) {
-            return ResponseEntity.status(404).body(new MessageResponse("User not found with this email."));
+            return ResponseEntity.status(404).body(new MessageResponse("User not found. Please register first."));
         }
 
+        // Remove OTP after use
+        OTP_STORAGE.remove(email);
+
         User user = userOptional.get();
-        // Generate token manually as we're not using standard authentication manager
         String jwt = jwtUtils.generateJwtTokenFromUsername(user.getEmail());
-        
-        String roleName = "ROLE_MECHANIC";
-        if (user.getRole() != null && user.getRole().getName() != null) {
-            roleName = user.getRole().getName().name();
-        }
-        List<String> roles = List.of(roleName);
+
+        List<String> roles = List.of(user.getRole().getName().name());
 
         return ResponseEntity.ok(new JwtResponse(jwt,
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                roles));
+                roles,
+                user.getAddress(),
+                user.getStatus().name(),
+                user.getLatitude(),
+                user.getLongitude()));
     }
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        System.out.println("Attempting login for: " + loginRequest.getEmail());
-        try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            String jwt = jwtUtils.generateJwtToken(authentication);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = jwtUtils.generateJwtToken(authentication);
 
-            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            List<String> roles = userDetails.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList());
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
 
-            System.out.println("Login successful for: " + loginRequest.getEmail() + " with roles: " + roles);
+        User user = userRepository.findById(userDetails.getId()).orElseThrow(() -> new RuntimeException("User not found"));
 
-            return ResponseEntity.ok(new JwtResponse(jwt,
-                    userDetails.getId(),
-                    userDetails.getUsername(),
-                    userDetails.getEmail(),
-                    roles));
-        } catch (Exception e) {
-            System.err.println("Login failed for: " + loginRequest.getEmail() + " error: " + e.getMessage());
-            return ResponseEntity.status(401).body(new MessageResponse("Error: Invalid email or password."));
-        }
+        return ResponseEntity.ok(new JwtResponse(jwt,
+                userDetails.getId(),
+                userDetails.getUsername(),
+                userDetails.getEmail(),
+                roles,
+                user.getAddress(),
+                user.getStatus().name(),
+                user.getLatitude(),
+                user.getLongitude()));
     }
 
     @PostMapping("/signup")
@@ -195,15 +209,10 @@ public class AuthController {
                     .body(new MessageResponse("Error: Email is already in use!"));
         }
 
-        // Verify OTP (if provided)
+        // Verify OTP
         String storedOtp = OTP_STORAGE.get(signUpRequest.getEmail());
-        
-        if (signUpRequest.getOtp() != null && !signUpRequest.getOtp().isEmpty()) {
-            if (storedOtp == null || !storedOtp.equals(signUpRequest.getOtp())) {
-                return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
-            }
-            // Remove OTP after use
-            OTP_STORAGE.remove(signUpRequest.getEmail());
+        if (storedOtp == null || !storedOtp.equals(signUpRequest.getOtp())) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
         }
 
         // Create new user's account
@@ -211,11 +220,9 @@ public class AuthController {
         user.setName(signUpRequest.getName());
         user.setEmail(signUpRequest.getEmail());
         user.setPassword(encoder.encode(signUpRequest.getPassword()));
-        String countryCode = signUpRequest.getCountryCode() != null ? signUpRequest.getCountryCode() : "";
-        String phone = signUpRequest.getPhone() != null ? signUpRequest.getPhone() : "";
-        String fullPhone = countryCode + phone;
-        user.setPhone(fullPhone.isEmpty() ? null : fullPhone);
+        user.setPhone(signUpRequest.getPhone());
         user.setAddress(signUpRequest.getAddress());
+        user.setStatus(User.UserStatus.PENDING); // Default status
 
         String strRole = signUpRequest.getRole();
         Role role;
@@ -224,112 +231,43 @@ public class AuthController {
             role = roleRepository.findByName(RoleName.ROLE_MECHANIC)
                     .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
         } else {
-            switch (strRole.toLowerCase()) {
-                case "admin":
-                case "role_admin":
-                    role = roleRepository.findByName(RoleName.ROLE_ADMIN)
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    break;
-                case "supermanager":
-                case "super_manager":
-                case "role_super_manager":
-                    role = roleRepository.findByName(RoleName.ROLE_SUPER_MANAGER)
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    break;
-                case "wholesaler":
-                case "role_wholesaler":
-                    role = roleRepository.findByName(RoleName.ROLE_WHOLESALER)
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    break;
-                case "retailer":
-                case "role_retailer":
-                    role = roleRepository.findByName(RoleName.ROLE_RETAILER)
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    break;
-                case "staff":
-                case "role_staff":
-                    role = roleRepository.findByName(RoleName.ROLE_STAFF)
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    break;
-                case "mechanic":
-                case "role_mechanic":
-                    role = roleRepository.findByName(RoleName.ROLE_MECHANIC)
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    break;
-                default:
-                    role = roleRepository.findByName(RoleName.ROLE_MECHANIC)
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            }
+            role = switch (strRole.toUpperCase()) {
+                case "ADMIN" -> roleRepository.findByName(RoleName.ROLE_ADMIN)
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                case "SUPER_MANAGER" -> roleRepository.findByName(RoleName.ROLE_SUPER_MANAGER)
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                case "STAFF" -> roleRepository.findByName(RoleName.ROLE_STAFF)
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                case "WHOLESALER" -> roleRepository.findByName(RoleName.ROLE_WHOLESALER)
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                case "RETAILER" -> roleRepository.findByName(RoleName.ROLE_RETAILER)
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                default -> roleRepository.findByName(RoleName.ROLE_MECHANIC)
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+            };
         }
 
         user.setRole(role);
-        // Mechanics, Admins, Staff, and Super Managers are approved by default
-        if (role.getName() == RoleName.ROLE_MECHANIC || 
-            role.getName() == RoleName.ROLE_ADMIN || 
-            role.getName() == RoleName.ROLE_STAFF || 
-            role.getName() == RoleName.ROLE_SUPER_MANAGER) {
-            user.setStatus(User.UserStatus.ACTIVE);
-        } else {
-            user.setStatus(User.UserStatus.PENDING);
-        }
-
         userRepository.save(user);
 
-        return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+        // Remove OTP after use
+        OTP_STORAGE.remove(signUpRequest.getEmail());
+
+        return ResponseEntity.ok(new MessageResponse("User registered successfully! Please wait for admin approval."));
     }
 
-    @PostMapping("/google")
-    public ResponseEntity<?> googleLogin(@RequestBody Map<String, Object> body) {
-        System.out.println("Google SSO login request: " + body);
-        String email = String.valueOf(body.get("email"));
-        String name = String.valueOf(body.get("name"));
-        
-        if (email == null || email.isEmpty() || email.equals("null")) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Email is required for Google SSO"));
+    @PostMapping("/update-fcm-token")
+    public ResponseEntity<?> updateFcmToken(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String token = body.get("token");
+        if (email == null || token == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Email and token are required."));
         }
-
-        java.util.Optional<User> userOptional = userRepository.findByEmail(email);
-        
-        User user;
-        if (userOptional.isPresent()) {
-            user = userOptional.get();
-            System.out.println("Existing user found for Google SSO: " + email);
-        } else {
-            // Create new user if not exists
-            System.out.println("Creating new user for Google SSO: " + email);
-            user = new User();
-            user.setEmail(email);
-            user.setName(name != null && !name.equals("null") ? name : email.split("@")[0]);
-            user.setPassword(encoder.encode("sso_google_password_" + new java.util.Random().nextInt(10000)));
-            
-            Role defaultRole = roleRepository.findByName(RoleName.ROLE_RETAILER)
-                    .orElseGet(() -> {
-                        Role r = new Role();
-                        r.setName(RoleName.ROLE_RETAILER);
-                        return roleRepository.save(r);
-                    });
-            
-            user.setRole(defaultRole);
-            user.setStatus(User.UserStatus.ACTIVE);
-            user = userRepository.save(user);
-        }
-
-        // Generate token
-        String jwt = jwtUtils.generateJwtTokenFromUsername(user.getEmail());
-        
-        String roleName = "ROLE_MECHANIC";
-        if (user.getRole() != null && user.getRole().getName() != null) {
-            roleName = user.getRole().getName().name();
-        }
-        List<String> roles = List.of(roleName);
-
-        System.out.println("Google SSO login successful for: " + email + " with roles: " + roles);
-
-        return ResponseEntity.ok(new JwtResponse(jwt,
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                roles));
+        userRepository.findByEmailAndDeletedFalse(email).ifPresent(user -> {
+            user.setFcmToken(token);
+            userRepository.save(user);
+        });
+        return ResponseEntity.ok(new MessageResponse("FCM token updated successfully"));
     }
 
     @PostMapping("/reset-password")
@@ -337,21 +275,59 @@ public class AuthController {
         String email = body.get("email");
         String otp = body.get("otp");
         String newPassword = body.get("newPassword");
+
         if (email == null || otp == null || newPassword == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Email, OTP and newPassword are required."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Email, OTP, and new password are required."));
         }
+
         String storedOtp = OTP_STORAGE.get(email);
         if (storedOtp == null || !storedOtp.equals(otp)) {
             return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
         }
-        java.util.Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(404).body(new MessageResponse("User not found with this email."));
-        }
-        User user = userOpt.get();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         user.setPassword(encoder.encode(newPassword));
         userRepository.save(user);
+
         OTP_STORAGE.remove(email);
+
         return ResponseEntity.ok(new MessageResponse("Password reset successfully."));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<?> googleSignIn(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String name = body.get("name");
+
+        if (email == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Email is required."));
+        }
+
+        User user = userRepository.findByEmail(email).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setName(name);
+            newUser.setPassword(encoder.encode("google_sso_default_password")); // Set a default, secure password
+            newUser.setStatus(User.UserStatus.ACTIVE);
+            Role defaultRole = roleRepository.findByName(RoleName.ROLE_MECHANIC)
+                    .orElseThrow(() -> new RuntimeException("Default role not found."));
+            newUser.setRole(defaultRole);
+            return userRepository.save(newUser);
+        });
+
+        String jwt = jwtUtils.generateJwtTokenFromUsername(user.getEmail());
+        List<String> roles = List.of(user.getRole().getName().name());
+
+        return ResponseEntity.ok(new JwtResponse(jwt,
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                roles,
+                user.getAddress(),
+                user.getStatus().name(),
+                user.getLatitude(),
+                user.getLongitude()));
     }
 }

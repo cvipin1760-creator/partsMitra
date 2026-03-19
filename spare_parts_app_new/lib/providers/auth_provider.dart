@@ -16,44 +16,16 @@ class AuthProvider with ChangeNotifier {
   AuthProvider() {
     _isLoading = true;
     _loadUser();
-
-    // Maximum loading time of 10 seconds to avoid permanent hang
-    Future.delayed(const Duration(seconds: 10), () {
-      if (_isLoading) {
-        if (kDebugMode) {
-          debugPrint('AuthProvider: Loading timed out after 10s');
-        }
-        _isLoading = false;
-        notifyListeners();
-      }
-    });
   }
 
   Future<void> _loadUser() async {
-    if (kDebugMode) {
-      debugPrint('AuthProvider: _loadUser started');
-    }
     try {
-      if (kDebugMode) {
-        debugPrint('AuthProvider: calling getCurrentUser');
-      }
       _user = await _authService.getCurrentUser();
-      if (kDebugMode) {
-        debugPrint('AuthProvider: user loaded: ${_user?.email}');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('AuthProvider: Error loading user: $e');
-      }
+      debugPrint('AuthProvider: Error loading user: $e');
     } finally {
-      if (kDebugMode) {
-        debugPrint('AuthProvider: setting isLoading = false');
-      }
       _isLoading = false;
       notifyListeners();
-      if (kDebugMode) {
-        debugPrint('AuthProvider: notifyListeners called');
-      }
     }
   }
 
@@ -243,11 +215,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<User?> signInWithGoogle(String email, String name) async {
+  Future<User?> signInWithGoogle() async {
     _isLoading = true;
     notifyListeners();
     try {
-      _user = await _authService.signInWithGoogle(email, name);
+      _user = await _authService.signInWithGoogle();
       return _user;
     } finally {
       _isLoading = false;

@@ -41,6 +41,7 @@ import '../services/auth_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'admin_settings_screen.dart';
+import 'offers_screen.dart';
 import '../services/settings_service.dart';
 import '../widgets/cart_badge.dart';
 import '../widgets/notification_badge.dart';
@@ -57,6 +58,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _voiceEnabled = true;
   final List<Widget> _widgetOptions = [
     const AdminOverviewScreen(),
+    const OffersScreen(),
     const AllOrdersScreen(),
     const OrderRequestsScreen(),
     const ManageProductsScreen(),
@@ -323,8 +325,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.list_alt),
-                  title: const Text('Orders'),
+                  leading: const Icon(Icons.local_offer),
+                  title: const Text('Offers'),
                   selected: _selectedIndex == 1,
                   onTap: () {
                     setState(() => _selectedIndex = 1);
@@ -332,8 +334,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.assignment),
-                  title: const Text('Requests'),
+                  leading: const Icon(Icons.list_alt),
+                  title: const Text('Orders'),
                   selected: _selectedIndex == 2,
                   onTap: () {
                     setState(() => _selectedIndex = 2);
@@ -341,11 +343,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.inventory),
-                  title: const Text('Products'),
+                  leading: const Icon(Icons.assignment),
+                  title: const Text('Requests'),
                   selected: _selectedIndex == 3,
                   onTap: () {
                     setState(() => _selectedIndex = 3);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.inventory),
+                  title: const Text('Products'),
+                  selected: _selectedIndex == 4,
+                  onTap: () {
+                    setState(() => _selectedIndex = 4);
                     Navigator.pop(context);
                   },
                 ),
@@ -353,24 +364,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ListTile(
                     leading: const Icon(Icons.category),
                     title: const Text('Categories'),
-                    selected: _selectedIndex == 4,
+                    selected: _selectedIndex == 5,
                     onTap: () {
-                      setState(() => _selectedIndex = 4);
+                      setState(() => _selectedIndex = 5);
                       Navigator.pop(context);
                     },
                   ),
                 ListTile(
                   leading: const Icon(Icons.bar_chart),
                   title: const Text('Reports'),
-                  selected: _selectedIndex == 5,
-                  onTap: () {
-                    setState(() => _selectedIndex = 5);
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.receipt),
-                  title: const Text('Invoicing'),
                   selected: _selectedIndex == 6,
                   onTap: () {
                     setState(() => _selectedIndex = 6);
@@ -378,8 +380,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.people),
-                  title: const Text('Users'),
+                  leading: const Icon(Icons.receipt),
+                  title: const Text('Invoicing'),
                   selected: _selectedIndex == 7,
                   onTap: () {
                     setState(() => _selectedIndex = 7);
@@ -387,11 +389,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.restore_from_trash),
-                  title: const Text('Recycle Bin'),
+                  leading: const Icon(Icons.people),
+                  title: const Text('Users'),
                   selected: _selectedIndex == 8,
                   onTap: () {
                     setState(() => _selectedIndex = 8);
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.restore_from_trash),
+                  title: const Text('Recycle Bin'),
+                  selected: _selectedIndex == 9,
+                  onTap: () {
+                    setState(() => _selectedIndex = 9);
                     Navigator.pop(context);
                   },
                 ),
@@ -399,18 +410,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ListTile(
                     leading: const Icon(Icons.record_voice_over),
                     title: const Text('Voice Training'),
-                    selected: _selectedIndex == 9,
+                    selected: _selectedIndex == 10,
                     onTap: () {
-                      setState(() => _selectedIndex = 9);
+                      setState(() => _selectedIndex = 10);
                       Navigator.pop(context);
                     },
                   ),
                 ListTile(
                   leading: const Icon(Icons.person),
                   title: const Text('Profile'),
-                  selected: _selectedIndex == 10,
+                  selected: _selectedIndex == 11,
                   onTap: () {
-                    setState(() => _selectedIndex = 10);
+                    setState(() => _selectedIndex = 11);
                     Navigator.pop(context);
                   },
                 ),
@@ -2044,6 +2055,79 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
     }
   }
 
+  void _showOfferDialog(Product product) {
+    String selectedOffer = product.offerType ?? 'NONE';
+    bool notifyWhatsApp = false;
+    bool notifyInApp = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Manage Offer: ${product.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedOffer,
+                decoration: const InputDecoration(labelText: 'Offer Type'),
+                items: const [
+                  DropdownMenuItem(value: 'NONE', child: Text('None')),
+                  DropdownMenuItem(value: 'DAILY', child: Text('Daily Offer')),
+                  DropdownMenuItem(
+                      value: 'WEEKLY', child: Text('Weekly Offer')),
+                ],
+                onChanged: (val) => setDialogState(() => selectedOffer = val!),
+              ),
+              if (selectedOffer != 'NONE') ...[
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('Send WhatsApp Notification'),
+                  subtitle:
+                      const Text('All users will receive a WhatsApp message'),
+                  value: notifyWhatsApp,
+                  onChanged: (val) =>
+                      setDialogState(() => notifyWhatsApp = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Send In-App Notification'),
+                  subtitle: const Text('Notification bar & in-app badge'),
+                  value: notifyInApp,
+                  onChanged: (val) => setDialogState(() => notifyInApp = val),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final success = await _productService.setProductOffer(
+                  product.id,
+                  selectedOffer,
+                  notifyWhatsApp: notifyWhatsApp,
+                  notifyInApp: notifyInApp,
+                );
+                if (success && mounted) {
+                  Navigator.pop(ctx);
+                  _fetchProducts();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Offer updated for ${product.name}')),
+                  );
+                }
+              },
+              child: const Text('Apply Offer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddProductDialog({Product? product}) {
     final nameController = TextEditingController(text: product?.name);
     final partController = TextEditingController(text: product?.partNumber);
@@ -2613,10 +2697,29 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
                               debugPrint('Image load error: $exception'),
                         ),
                       ),
-                      child: p.imagePath == null
-                          ? Icon(Icons.image_not_supported,
-                              color: Colors.grey[400], size: 32)
-                          : null,
+                      child: Stack(
+                        children: [
+                          if (p.imagePath == null)
+                            Center(
+                              child: Icon(Icons.image_not_supported,
+                                  color: Colors.grey[400], size: 32),
+                            ),
+                          if (p.offerType != null && p.offerType != 'NONE')
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.local_offer,
+                                    size: 12, color: Colors.white),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -2638,6 +2741,14 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
                             style: TextStyle(
                                 color: Colors.grey[600], fontSize: 13),
                           ),
+                          if (p.offerType != null && p.offerType != 'NONE')
+                            Text(
+                              'Offer: ${p.offerType}',
+                              style: const TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12),
+                            ),
                           const SizedBox(height: 2),
                           Row(
                             children: [
@@ -2683,6 +2794,17 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
                     ),
                     Column(
                       children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.local_offer_outlined,
+                            color:
+                                (p.offerType != null && p.offerType != 'NONE')
+                                    ? Colors.red
+                                    : Colors.grey,
+                          ),
+                          onPressed: () => _showOfferDialog(p),
+                          tooltip: 'Set Offer',
+                        ),
                         Switch(
                           value: p.enabled,
                           activeColor: Colors.redAccent,

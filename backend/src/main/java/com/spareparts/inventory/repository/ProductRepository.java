@@ -35,6 +35,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     List<Product> findByDeletedTrue();
     
+    List<Product> findByOfferTypeAndDeletedFalse(Product.OfferType offerType);
+    Page<Product> findByOfferTypeAndDeletedFalse(Product.OfferType offerType, Pageable pageable);
+    
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
     void deleteByDeletedTrue();

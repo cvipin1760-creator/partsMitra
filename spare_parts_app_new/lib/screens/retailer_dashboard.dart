@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import 'wholesaler_shop_screen.dart';
 import 'retailer_orders_screen.dart';
 import 'profile_screen.dart';
+import 'offers_screen.dart';
 import 'notification_screen.dart';
 import '../widgets/ai_chatbot_widget.dart';
 import '../services/settings_service.dart';
@@ -23,6 +24,7 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
 
   static const List<Widget> _widgetOptions = <Widget>[
     WholesalerShopScreen(),
+    OffersScreen(),
     Center(child: Text('My Inventory', style: TextStyle(fontSize: 24))),
     RetailerOrdersScreen(),
     ProfileScreen(),
@@ -103,6 +105,11 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
               icon: Icon(Icons.store_outlined),
               selectedIcon: Icon(Icons.store),
               label: 'Shop',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.local_offer_outlined),
+              selectedIcon: Icon(Icons.local_offer),
+              label: 'Offers',
             ),
             NavigationDestination(
               icon: Icon(Icons.inventory_2_outlined),

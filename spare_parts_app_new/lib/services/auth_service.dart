@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bcrypt/bcrypt.dart';
 
@@ -31,22 +30,11 @@ class AuthService {
   Future<User?> login(String identifier, String password) async {
     try {
       if (Constants.useRemote) {
-        final res = await http.post(
-          Uri.parse('${Constants.baseUrl}/auth/signin'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'email': identifier, 'password': password}),
-        );
-        if (res.statusCode == 401 || res.statusCode == 403) {
-          final body = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-          final msg = body is Map
-              ? (body['message'] ?? body['error'] ?? 'Invalid credentials')
-              : 'Invalid email/phone or password';
-          throw Exception(msg.toString());
-        }
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          throw 'HTTP ${res.statusCode}: ${res.body}';
-        }
-        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        final json = await _remote.postJson('/auth/signin', {
+          'email': identifier,
+          'password': password,
+        });
+
         final token = json['token'] ?? json['accessToken'];
         final id = (json['id'] as num).toInt();
         final emailVal = json['email'] as String;
@@ -138,19 +126,11 @@ class AuthService {
   Future<User?> loginWithOtp(String identifier, String otp) async {
     try {
       if (Constants.useRemote) {
-        final res = await http.post(
-          Uri.parse('${Constants.baseUrl}${Constants.otpLoginPath}'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'email': identifier, 'otp': otp}),
-        );
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          final body = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-          final msg = body is Map
-              ? (body['message'] ?? body['error'] ?? 'OTP verification failed')
-              : 'OTP verification failed';
-          throw Exception(msg.toString());
-        }
-        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        final json = await _remote.postJson(Constants.otpLoginPath, {
+          'email': identifier,
+          'otp': otp,
+        });
+
         final token = json['token'] ?? json['accessToken'];
         final id = (json['id'] as num).toInt();
         final emailVal = json['email'] as String;
@@ -275,27 +255,13 @@ class AuthService {
         'name': name,
         'email': email,
         'password': password,
-        'phone': phone ?? '',
-        'address': address ?? '',
+        'phone': phone,
+        'address': address,
         'role': _mapRoleForBackend(role),
       };
       if (otp != null && otp.isNotEmpty) body['otp'] = otp;
 
-      final res = await http.post(
-        Uri.parse('${Constants.baseUrl}/auth/signup'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
-      if (res.statusCode == 400) {
-        final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-        final msg = decoded is Map
-            ? (decoded['message'] ?? 'Registration failed')
-            : res.body;
-        throw Exception(msg.toString());
-      }
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        throw 'HTTP ${res.statusCode}: ${res.body}';
-      }
+      await _remote.postJson('/auth/signup', body);
       return true;
     }
 
@@ -417,8 +383,7 @@ class AuthService {
 
   Future<void> updateUserAddress(int userId, String address) async {
     if (Constants.useRemote) {
-      await _remote
-          .putJson('/admin/users/$userId/address', {'address': address});
+      await _remote.putJson('/users/address', {'address': address});
       final prefs = await _prefs();
       final current = await getCurrentUser();
       if (current != null && current.id == userId) {
@@ -474,6 +439,27 @@ class AuthService {
     String phone,
     String address,
   ) async {
+    if (Constants.useRemote) {
+      final res = await _remote.putJson('/users/profile', {
+        'name': name,
+        'phone': phone,
+        'address': address,
+      });
+
+      final current = await getCurrentUser();
+      final Map<String, dynamic> userData = Map.from(res);
+      if (current != null) {
+        userData['token'] = current.token;
+      } else {
+        userData['token'] = '';
+      }
+
+      final updated = User.fromJson(userData);
+      final prefs = await _prefs();
+      await prefs.setString('user', jsonEncode(updated.toJson()));
+      return updated;
+    }
+
     final db = await _dbService.database;
 
     await db.update(
@@ -607,29 +593,26 @@ class AuthService {
 
     if (Constants.useRemote && !Constants.forceLocalOtp) {
       try {
+        if (kDebugMode) {
+          debugPrint('AuthService: Requesting remote OTP for $identifier...');
+        }
         final body = {
           'email': identifier,
           'purpose': (registrationData.isNotEmpty ? 'signup' : 'login'),
         };
-        final res = await http.post(
-          Uri.parse('${Constants.baseUrl}/auth/send-otp'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        );
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          _otp = null; // Backend stores OTP
-          return 'server';
-        } else {
-          final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-          final msg =
-              decoded is Map ? (decoded['message'] ?? res.body) : res.body;
-          throw Exception(msg.toString());
-        }
+        await _remote.postJson('/auth/send-otp', body);
+
+        _otp = null; // Backend stores OTP
+        return 'server';
       } catch (e) {
+        if (kDebugMode) {
+          debugPrint('AuthService: Remote OTP failed: $e');
+        }
         if (registrationData.isNotEmpty) {
           // Signup: allow local fallback
-          if (kDebugMode)
+          if (kDebugMode) {
             debugPrint('Remote OTP failed, falling back (signup): $e');
+          }
         } else {
           // Login/reset: do not fallback; propagate error
           rethrow;
@@ -665,20 +648,8 @@ class AuthService {
     try {
       if (Constants.useRemote && !Constants.forceLocalOtp) {
         final body = {'email': email, 'purpose': 'reset'};
-        final res = await http.post(
-          Uri.parse('${Constants.baseUrl}/auth/send-otp'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        );
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          _otp = null;
-          return;
-        } else {
-          final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-          final msg =
-              decoded is Map ? (decoded['message'] ?? res.body) : res.body;
-          throw Exception(msg.toString());
-        }
+        await _remote.postJson('/auth/send-otp', body);
+        _otp = null;
       } else {
         _otp = (100000 + Random().nextInt(900000)).toString();
         await _emailService.sendOtp(email, _otp!);
@@ -706,32 +677,12 @@ class AuthService {
     String newPassword,
   ) async {
     if (Constants.useRemote) {
-      try {
-        final res = await _remote.postJson(Constants.resetPasswordPath, {
-          'email': email,
-          'otp': otp,
-          'newPassword': newPassword,
-        });
-        return res != null;
-      } catch (e) {
-        // Try alternative reset path
-        try {
-          final resAlt =
-              await _remote.postJson(Constants.altResetPasswordPath, {
-            'email': email,
-            'otp': otp,
-            'newPassword': newPassword,
-          });
-          return resAlt != null;
-        } catch (_) {}
-        // Final fallback: verify OTP via otp-login to allow user to proceed
-        try {
-          final user = await loginWithOtp(email, otp);
-          return user != null;
-        } catch (_) {
-          rethrow;
-        }
-      }
+      final res = await _remote.postJson('/auth/reset-password', {
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+      });
+      return res != null;
     }
     if (_otp != otp) {
       throw "Invalid OTP";
@@ -751,22 +702,24 @@ class AuthService {
   // GOOGLE LOGIN
   // =============================
 
-  Future<User?> signInWithGoogle(String email, String name) async {
+  Future<User?> signInWithGoogle() async {
     try {
+      final googleUser = await _googleSSO.signIn();
+      if (googleUser == null) return null; // User cancelled
+
+      final String googleEmail = googleUser['email'] ?? '';
+      final String googleName = googleUser['name'] ?? '';
+
       if (Constants.useRemote) {
-        final res = await http.post(
-          Uri.parse('${Constants.baseUrl}/auth/google'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'email': email, 'name': name}),
-        );
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          throw 'Google sign-in failed: ${res.body}';
-        }
-        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        final json = await _remote.postJson('/auth/google', {
+          'email': googleEmail,
+          'name': googleName,
+        });
+
         final token = json['token'] ?? json['accessToken'];
         final id = (json['id'] as num).toInt();
         final emailVal = json['email'] as String;
-        final userName = json['username'] ?? json['name'] ?? name;
+        final userName = json['username'] ?? json['name'] ?? googleName;
         final roles = (json['roles'] as List).map((e) => e.toString()).toList();
         final user = User(
           id: id,
@@ -796,7 +749,7 @@ class AuthService {
       final maps = await db.query(
         "users",
         where: "email = ?",
-        whereArgs: [email],
+        whereArgs: [googleEmail],
       );
 
       if (maps.isNotEmpty) {
@@ -824,8 +777,8 @@ class AuthService {
       }
 
       final id = await db.insert("users", {
-        "name": name,
-        "email": email,
+        "name": googleName,
+        "email": googleEmail,
         "password": "google_sso",
         "role": Constants.roleRetailer,
         "status": "ACTIVE",
@@ -833,13 +786,14 @@ class AuthService {
 
       final user = User(
         id: id,
-        email: email,
-        name: name,
+        email: googleEmail,
+        name: googleName,
         phone: null,
         token: "google-token",
         roles: [Constants.roleRetailer],
         latitude: null,
         longitude: null,
+        status: "ACTIVE",
       );
 
       final prefs = await _prefs();
@@ -848,7 +802,7 @@ class AuthService {
       return user;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint("Google login error: $e");
+        debugPrint("Google sign-in error: $e");
       }
       rethrow;
     }

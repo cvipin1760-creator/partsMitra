@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import 'wholesaler_shop_screen.dart';
 import 'retailer_orders_screen.dart';
 import 'profile_screen.dart';
+import 'offers_screen.dart';
 import 'notification_screen.dart';
 import '../widgets/ai_chatbot_widget.dart';
 import '../services/settings_service.dart';
@@ -23,6 +24,7 @@ class _WholesalerDashboardState extends State<WholesalerDashboard> {
 
   static const List<Widget> _widgetOptions = <Widget>[
     WholesalerShopScreen(),
+    OffersScreen(),
     Center(child: Text('Sales Reports', style: TextStyle(fontSize: 24))),
     RetailerOrdersScreen(), // Buying history
     ProfileScreen(),
@@ -101,13 +103,18 @@ class _WholesalerDashboardState extends State<WholesalerDashboard> {
           onDestinationSelected: _onItemTapped,
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.shopping_bag_outlined),
-              selectedIcon: Icon(Icons.shopping_bag),
+              icon: Icon(Icons.store_outlined),
+              selectedIcon: Icon(Icons.store),
               label: 'Shop',
             ),
             NavigationDestination(
-              icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart),
+              icon: Icon(Icons.local_offer_outlined),
+              selectedIcon: Icon(Icons.local_offer),
+              label: 'Offers',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.analytics_outlined),
+              selectedIcon: Icon(Icons.analytics),
               label: 'Sales',
             ),
             NavigationDestination(

@@ -279,20 +279,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      final auth =
-                          Provider.of<AuthProvider>(context, listen: false);
-                      await auth.updateProfile(
-                        _nameController.text,
-                        _phoneController.text,
-                        _addressController.text,
-                      );
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Profile updated successfully!'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      try {
+                        final auth =
+                            Provider.of<AuthProvider>(context, listen: false);
+                        await auth.updateProfile(
+                          _nameController.text,
+                          _phoneController.text,
+                          _addressController.text,
+                        );
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Profile updated successfully!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to update profile: $e'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Text('SAVE CHANGES'),

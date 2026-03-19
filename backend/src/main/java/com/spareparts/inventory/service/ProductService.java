@@ -268,6 +268,12 @@ public class ProductService extends ProductSubject {
         product.setEnabled(productDto.isEnabled());
         product.setImagePath(productDto.getImagePath());
         product.setImageLink(productDto.getImageLink());
+        product.setDescription(productDto.getDescription());
+        
+        if (productDto.getOfferType() != null) {
+            product.setOfferType(Product.OfferType.valueOf(productDto.getOfferType()));
+        }
+
         if (productDto.getCategoryId() != null) {
             categoryRepository.findById(productDto.getCategoryId()).ifPresent(product::setCategory);
         } else {
@@ -275,6 +281,34 @@ public class ProductService extends ProductSubject {
         }
         product = productRepository.save(product);
         return convertToDto(product);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ProductDto> getProductsByOfferType(String offerType, int page, int size, String sortBy, String direction) {
+        Product.OfferType type = Product.OfferType.valueOf(offerType.toUpperCase());
+        Sort sort = direction.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> productPage = productRepository.findByOfferTypeAndDeletedFalse(type, pageable);
+        return convertToPaginatedResponse(productPage);
+    }
+
+    @Transactional
+    public void setProductOffer(Long productId, String offerType, boolean notifyWhatsApp, boolean notifyInApp) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        
+        Product.OfferType type = Product.OfferType.valueOf(offerType.toUpperCase());
+        product.setOfferType(type);
+        productRepository.save(product);
+
+        if (type != Product.OfferType.NONE) {
+            if (notifyInApp) {
+                inAppNotificationObserver.sendOfferNotification(product);
+            }
+            if (notifyWhatsApp) {
+                whatsAppNotificationObserver.sendOfferNotification(product);
+            }
+        }
     }
 
     @Transactional
@@ -332,6 +366,7 @@ public class ProductService extends ProductSubject {
         dto.setImageLink(product.getImageLink());
         dto.setDescription(product.getDescription());
         dto.setWholesalerId(product.getWholesaler().getId());
+        dto.setOfferType(product.getOfferType() != null ? product.getOfferType().name() : null);
         if (product.getCategory() != null) {
             dto.setCategoryId(product.getCategory().getId());
             dto.setCategoryName(product.getCategory().getName());

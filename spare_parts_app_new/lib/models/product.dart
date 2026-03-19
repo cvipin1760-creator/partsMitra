@@ -18,6 +18,7 @@ class Product {
   final String? categoryName;
   final String? categoryImagePath;
   final String? categoryImageLink;
+  final String? offerType;
 
   Product({
     required this.id,
@@ -39,6 +40,7 @@ class Product {
     this.categoryName,
     this.categoryImagePath,
     this.categoryImageLink,
+    this.offerType,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -72,6 +74,7 @@ class Product {
       categoryName: json['categoryName'],
       categoryImagePath: json['categoryImagePath'],
       categoryImageLink: json['categoryImageLink'],
+      offerType: json['offerType'],
     );
   }
 
@@ -96,6 +99,7 @@ class Product {
       'categoryName': categoryName,
       'categoryImagePath': categoryImagePath,
       'categoryImageLink': categoryImageLink,
+      'offerType': offerType,
     };
   }
 
@@ -116,6 +120,7 @@ class Product {
     bool? enabled,
     int? categoryId,
     String? categoryName,
+    String? offerType,
   }) {
     return Product(
       id: id ?? this.id,
@@ -134,6 +139,7 @@ class Product {
       enabled: enabled ?? this.enabled,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
+      offerType: offerType ?? this.offerType,
     );
   }
 }

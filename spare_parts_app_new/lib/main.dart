@@ -15,8 +15,11 @@ import 'screens/reset_password_screen.dart';
 import 'utils/constants.dart';
 import 'screens/auth_home_screen.dart';
 
-void main() {
+import 'services/notification_service.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.initialize();
   runApp(
     MultiProvider(
       providers: [
@@ -122,10 +125,6 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-
-    if (authProvider.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
 
     if (authProvider.user == null) {
       return const AuthHomeScreen();

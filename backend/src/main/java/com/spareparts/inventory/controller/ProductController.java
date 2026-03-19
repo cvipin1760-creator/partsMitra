@@ -74,6 +74,16 @@ public class ProductController {
         return ResponseEntity.ok(productService.searchProducts(query, page, size, sortBy, direction));
     }
 
+    @GetMapping("/offers")
+    public ResponseEntity<PaginatedResponse<ProductDto>> getProductsByOfferType(
+            @RequestParam String type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        return ResponseEntity.ok(productService.getProductsByOfferType(type, page, size, sortBy, direction));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('WHOLESALER') or hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
     public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductDto productDto, Authentication authentication) {

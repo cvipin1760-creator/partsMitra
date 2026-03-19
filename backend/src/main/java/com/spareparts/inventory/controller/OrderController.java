@@ -66,6 +66,13 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getSellerOrders(userDetails.getId()));
     }
 
+    @GetMapping("/staff-orders")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<List<OrderDto>> getStaffOrders(Authentication authentication) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        return ResponseEntity.ok(orderService.getStaffOrders(userDetails.getId()));
+    }
+
     @PutMapping("/{orderId}/status")
     @PreAuthorize("hasRole('WHOLESALER') or hasRole('RETAILER') or hasRole('ADMIN') or hasRole('SUPER_MANAGER') or hasRole('STAFF')")
     public ResponseEntity<OrderDto> updateOrderStatus(@PathVariable Long orderId, @RequestParam Order.OrderStatus status, Authentication authentication) {

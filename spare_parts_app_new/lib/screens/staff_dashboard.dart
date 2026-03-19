@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io';
 import '../providers/auth_provider.dart';
 import '../services/order_service.dart';
 import '../services/database_service.dart';
+import '../services/auth_service.dart';
 import '../models/order.dart';
+import '../utils/image_utils.dart';
+import '../utils/constants.dart';
 import 'profile_screen.dart';
-import 'notification_screen.dart';
+import 'offers_screen.dart';
 import '../widgets/notification_badge.dart';
 
 class StaffDashboard extends StatefulWidget {
@@ -23,6 +25,7 @@ class _StaffDashboardState extends State<StaffDashboard> {
 
   final List<Widget> _widgetOptions = [
     const StaffOrdersScreen(),
+    const OffersScreen(),
     const ProfileScreen(),
   ];
 
@@ -75,6 +78,11 @@ class _StaffDashboardState extends State<StaffDashboard> {
               icon: Icon(Icons.delivery_dining_outlined),
               selectedIcon: Icon(Icons.delivery_dining),
               label: 'Deliveries',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.local_offer_outlined),
+              selectedIcon: Icon(Icons.local_offer),
+              label: 'Offers',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),
@@ -139,35 +147,54 @@ class _StaffOrdersScreenState extends State<StaffOrdersScreen> {
   }
 
   void _viewShopImage(int customerId) async {
-    final db = await DatabaseService().database;
-    final List<Map<String, dynamic>> maps =
-        await db.query('users', where: 'id = ?', whereArgs: [customerId]);
-    if (maps.isNotEmpty) {
-      final String? path = maps.first['shopImagePath'] as String?;
-      if (path != null && mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => Dialog(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text('Customer Shop Image',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                Image.file(File(path)),
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Close')),
-              ],
-            ),
-          ),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('No shop image uploaded by customer.')));
+    String? path;
+    if (Constants.useRemote) {
+      final users = await AuthService().getAllUsers();
+      final user = users.firstWhere((u) => u.id == customerId,
+          orElse: () => throw 'User not found');
+      path = user.shopImagePath;
+    } else {
+      final db = await DatabaseService().database;
+      final List<Map<String, dynamic>> maps =
+          await db.query('users', where: 'id = ?', whereArgs: [customerId]);
+      if (maps.isNotEmpty) {
+        path = maps.first['shopImagePath'] as String?;
       }
+    }
+
+    if (path != null && mounted) {
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: Text('Customer Shop Image',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              ),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 400),
+                child: Image(
+                  image: getImageProvider(path),
+                  fit: BoxFit.contain,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Close', style: TextStyle(fontSize: 16))),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No shop image uploaded by customer.')));
     }
   }
 
@@ -176,10 +203,14 @@ class _StaffOrdersScreenState extends State<StaffOrdersScreen> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     final activeOrders = _orders
-        .where((o) => o.status == 'APPROVED' || o.status == 'IN_TRANSIT')
+        .where((o) =>
+            o.status == 'APPROVED' ||
+            o.status == 'PACKED' ||
+            o.status == 'OUT_FOR_DELIVERY')
         .toList();
-    if (activeOrders.isEmpty)
+    if (activeOrders.isEmpty) {
       return const Center(child: Text('No active deliveries.'));
+    }
 
     return RefreshIndicator(
       onRefresh: _fetchOrders,
@@ -189,51 +220,101 @@ class _StaffOrdersScreenState extends State<StaffOrdersScreen> {
           final order = activeOrders[i];
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ExpansionTile(
-              title: Text('Order #${order.id} - ${order.status}'),
-              subtitle: Text('To: ${order.customerName}'),
+              title: Text('Order #${order.id}',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Customer: ${order.customerName}'),
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(order.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      order.status,
+                      style: TextStyle(
+                        color: _getStatusColor(order.status),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               children: [
+                const Divider(),
                 ...order.items.map((item) => ListTile(
                       title: Text(item.productName),
                       subtitle: Text('Qty: ${item.quantity}'),
+                      trailing: Text('₹${item.price * item.quantity}'),
                     )),
+                const Divider(),
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  padding: const EdgeInsets.all(12.0),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
                     children: [
                       if (order.latitude != null && order.longitude != null)
                         ElevatedButton.icon(
                           onPressed: () =>
                               _openMap(order.latitude!, order.longitude!),
-                          icon: const Icon(Icons.map),
+                          icon: const Icon(Icons.map, size: 18),
                           label: const Text('Navigate'),
                           style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white),
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12)),
                         ),
                       ElevatedButton.icon(
                         onPressed: () => _viewShopImage(order.customerId),
-                        icon: const Icon(Icons.storefront),
+                        icon: const Icon(Icons.storefront, size: 18),
                         label: const Text('Shop Image'),
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueGrey,
-                            foregroundColor: Colors.white),
+                            foregroundColor: Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12)),
                       ),
                       if (order.status == 'APPROVED')
                         ElevatedButton(
-                          onPressed: () =>
-                              _updateStatus(order.id, 'IN_TRANSIT'),
+                          onPressed: () => _updateStatus(order.id, 'PACKED'),
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange),
-                          child: const Text('Mark In Transit'),
+                              backgroundColor: Colors.indigo,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12)),
+                          child: const Text('Mark Packed'),
                         ),
-                      if (order.status == 'IN_TRANSIT')
+                      if (order.status == 'PACKED')
+                        ElevatedButton(
+                          onPressed: () =>
+                              _updateStatus(order.id, 'OUT_FOR_DELIVERY'),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12)),
+                          child: const Text('Out for Delivery'),
+                        ),
+                      if (order.status == 'OUT_FOR_DELIVERY')
                         ElevatedButton(
                           onPressed: () => _updateStatus(order.id, 'DELIVERED'),
                           style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
-                              foregroundColor: Colors.white),
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12)),
                           child: const Text('Mark Delivered'),
                         ),
                     ],
@@ -245,5 +326,20 @@ class _StaffOrdersScreenState extends State<StaffOrdersScreen> {
         },
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'APPROVED':
+        return Colors.blue;
+      case 'PACKED':
+        return Colors.indigo;
+      case 'OUT_FOR_DELIVERY':
+        return Colors.orange;
+      case 'DELIVERED':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 }

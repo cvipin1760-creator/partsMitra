@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
@@ -280,7 +279,7 @@ class ProductService {
   }
 
   Future<List<Product>> getProductsByCategory(int categoryId,
-      {int page = 0, int size = 10}) async {
+      {int page = 0, int size = 20}) async {
     try {
       if (Constants.useRemote) {
         final data = await _remote
@@ -301,23 +300,8 @@ class ProductService {
           return products;
         }
 
-        final enabledOnly = products.where((p) => p.enabled).toList();
-        if (user.roles.contains(Constants.roleWholesaler)) {
-          return enabledOnly
-              .where((p) => p.wholesalerPrice > 0 || p.sellingPrice > 0)
-              .toList();
-        }
-        if (user.roles.contains(Constants.roleRetailer)) {
-          return enabledOnly
-              .where((p) => p.retailerPrice > 0 || p.sellingPrice > 0)
-              .toList();
-        }
-        if (user.roles.contains(Constants.roleMechanic)) {
-          return enabledOnly
-              .where((p) => p.mechanicPrice > 0 || p.sellingPrice > 0)
-              .toList();
-        }
-        return enabledOnly.where((p) => p.sellingPrice > 0).toList();
+        // Only show enabled products to regular users
+        return products.where((p) => p.enabled).toList();
       }
       final db = await _dbService.database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -326,6 +310,7 @@ class ProductService {
         whereArgs: [categoryId],
         limit: size,
         offset: page * size,
+        orderBy: 'id DESC',
       );
       return maps.map((p) => Product.fromJson(p)).toList();
     } catch (e) {
@@ -334,7 +319,7 @@ class ProductService {
     }
   }
 
-  Future<List<Product>> getAllProducts({int page = 0, int size = 10}) async {
+  Future<List<Product>> getAllProducts({int page = 0, int size = 20}) async {
     try {
       if (Constants.useRemote) {
         final data = await _remote.getJson('/products?page=$page&size=$size');
@@ -351,23 +336,9 @@ class ProductService {
             user.roles.contains(Constants.roleStaff)) {
           return products;
         }
-        final enabledOnly = products.where((p) => p.enabled).toList();
-        if (user.roles.contains(Constants.roleWholesaler)) {
-          return enabledOnly
-              .where((p) => p.wholesalerPrice > 0 || p.sellingPrice > 0)
-              .toList();
-        }
-        if (user.roles.contains(Constants.roleRetailer)) {
-          return enabledOnly
-              .where((p) => p.retailerPrice > 0 || p.sellingPrice > 0)
-              .toList();
-        }
-        if (user.roles.contains(Constants.roleMechanic)) {
-          return enabledOnly
-              .where((p) => p.mechanicPrice > 0 || p.sellingPrice > 0)
-              .toList();
-        }
-        return enabledOnly.where((p) => p.sellingPrice > 0).toList();
+
+        // Only show enabled products to regular users
+        return products.where((p) => p.enabled).toList();
       }
       final db = await _dbService.database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -375,6 +346,7 @@ class ProductService {
         where: 'deleted = 0',
         limit: size,
         offset: page * size,
+        orderBy: 'id DESC',
       );
       final products = maps.map((p) => Product.fromJson(p)).toList();
       final prefs = await SharedPreferences.getInstance();
@@ -389,19 +361,13 @@ class ProductService {
       }
       final enabledOnly = products.where((p) => p.enabled).toList();
       if (user.roles.contains(Constants.roleWholesaler)) {
-        return enabledOnly
-            .where((p) => p.wholesalerPrice > 0 || p.sellingPrice > 0)
-            .toList();
+        return enabledOnly;
       }
       if (user.roles.contains(Constants.roleRetailer)) {
-        return enabledOnly
-            .where((p) => p.retailerPrice > 0 || p.sellingPrice > 0)
-            .toList();
+        return enabledOnly;
       }
       if (user.roles.contains(Constants.roleMechanic)) {
-        return enabledOnly
-            .where((p) => p.mechanicPrice > 0 || p.sellingPrice > 0)
-            .toList();
+        return enabledOnly;
       }
       return enabledOnly.where((p) => p.sellingPrice > 0).toList();
     } catch (e) {
@@ -443,19 +409,13 @@ class ProductService {
           return products;
         }
         if (user.roles.contains(Constants.roleWholesaler)) {
-          return products
-              .where((p) => p.wholesalerPrice > 0 || p.sellingPrice > 0)
-              .toList();
+          return products;
         }
         if (user.roles.contains(Constants.roleRetailer)) {
-          return products
-              .where((p) => p.retailerPrice > 0 || p.sellingPrice > 0)
-              .toList();
+          return products;
         }
         if (user.roles.contains(Constants.roleMechanic)) {
-          return products
-              .where((p) => p.mechanicPrice > 0 || p.sellingPrice > 0)
-              .toList();
+          return products;
         }
         return products.where((p) => p.sellingPrice > 0).toList();
       }
@@ -501,13 +461,13 @@ class ProductService {
       }
       final enabledOnly = products.where((p) => p.enabled).toList();
       if (user.roles.contains(Constants.roleWholesaler)) {
-        return enabledOnly.where((p) => p.wholesalerPrice > 0).toList();
+        return enabledOnly;
       }
       if (user.roles.contains(Constants.roleRetailer)) {
-        return enabledOnly.where((p) => p.retailerPrice > 0).toList();
+        return enabledOnly;
       }
       if (user.roles.contains(Constants.roleMechanic)) {
-        return enabledOnly.where((p) => p.mechanicPrice > 0).toList();
+        return enabledOnly;
       }
       return enabledOnly.where((p) => p.sellingPrice > 0).toList();
     } catch (e) {
@@ -819,6 +779,42 @@ class ProductService {
       return true;
     } catch (e) {
       debugPrint('Restore product error: $e');
+      return false;
+    }
+  }
+
+  Future<List<Product>> getProductsByOfferType(String offerType,
+      {int page = 0, int size = 20}) async {
+    try {
+      if (Constants.useRemote) {
+        final data = await _remote
+            .getJson('/products/offers?type=$offerType&page=$page&size=$size');
+        final List<dynamic> list = data['content'];
+        return list
+            .map((e) => Product.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      // Local mode fallback: not fully implemented but returns empty
+      return [];
+    } catch (e) {
+      debugPrint('Get products by offer error: $e');
+      return [];
+    }
+  }
+
+  Future<bool> setProductOffer(int productId, String offerType,
+      {bool notifyWhatsApp = false, bool notifyInApp = true}) async {
+    try {
+      if (Constants.useRemote) {
+        await _remote.postJson(
+          '/admin/products/$productId/offer?offerType=$offerType&notifyWhatsApp=$notifyWhatsApp&notifyInApp=$notifyInApp',
+          {},
+        );
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Set product offer error: $e');
       return false;
     }
   }

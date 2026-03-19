@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-
 import '../providers/auth_provider.dart';
-import '../providers/notification_provider.dart';
 import '../services/notification_service.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -14,124 +12,88 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  final NotificationService _notificationService = NotificationService();
-
-  List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
+  List<dynamic> _notifications = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchNotifications();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<NotificationProvider>(context, listen: false).markAllAsRead();
-    });
+    _loadNotifications();
   }
 
-  Future<void> _fetchNotifications() async {
+  Future<void> _loadNotifications() async {
+    setState(() => _isLoading = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.user != null) {
+      final role = auth.user!.roles.first;
+      final remote = await NotificationService.fetchRemoteHistory(role);
+      final local = await NotificationService.getLocalHistory();
 
-    if (auth.user == null) {
-      setState(() => _isLoading = false);
-      return;
+      setState(() {
+        _notifications = [...remote, ...local];
+        _isLoading = false;
+      });
     }
-
-    final results =
-        await _notificationService.getMyNotifications(auth.user!.roles.first);
-
-    if (!mounted) return;
-
-    setState(() {
-      _notifications = results;
-      _isLoading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final notificationProvider = Provider.of<NotificationProvider>(context);
-    final notifications = notificationProvider.notifications;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadNotifications,
+          ),
+        ],
       ),
-      body: notifications.isEmpty
-          ? const Center(child: Text('No notifications yet.'))
-          : ListView.builder(
-              itemCount: notifications.length,
-              itemBuilder: (ctx, i) {
-                final n = notifications[i];
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _notifications.isEmpty
+              ? const Center(child: Text('No notifications yet'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _notifications.length,
+                  itemBuilder: (context, index) {
+                    final n = _notifications[index];
+                    final title = n['title'] ?? 'No Title';
+                    final body = n['message'] ?? n['body'] ?? 'No Message';
+                    final dateStr = n['createdAt'] ?? '';
+                    final date = dateStr.isNotEmpty
+                        ? DateFormat('MMM dd, yyyy HH:mm')
+                            .format(DateTime.parse(dateStr))
+                        : 'Unknown date';
 
-                String dateStr = 'Just now';
-                try {
-                  if (n['createdAt'] != null) {
-                    dateStr = DateFormat('dd MMM, hh:mm a').format(
-                      DateTime.parse(n['createdAt']),
-                    );
-                  }
-                } catch (e) {
-                  // ignore
-                }
-
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (n['imageUrl'] != null &&
-                          n['imageUrl'].toString().isNotEmpty)
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(4)),
-                          child: Image.network(
-                            n['imageUrl'],
-                            height: 150,
-                            width: double.maxFinite,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const SizedBox.shrink(),
-                          ),
-                        ),
-                      ListTile(
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
                         leading: const CircleAvatar(
-                          child: Icon(Icons.notifications),
+                          backgroundColor: Color(0xFFE8F5E9),
+                          child: Icon(Icons.notifications,
+                              color: Color(0xFF2E7D32)),
                         ),
                         title: Text(
-                          n['title'] ?? 'No Title',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(n['message'] ?? ''),
+                            const SizedBox(height: 4),
+                            Text(body),
                             const SizedBox(height: 4),
                             Text(
-                              dateStr,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+                              date,
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade600),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
     );
   }
 }

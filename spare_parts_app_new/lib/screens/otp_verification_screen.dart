@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously, library_private_types_in_public_api
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_exceptions.dart';
@@ -7,11 +8,13 @@ import '../services/auth_exceptions.dart';
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
   final Map<String, dynamic>? registrationData;
+  final bool isRegistration;
 
   const OtpVerificationScreen({
     super.key,
     required this.email,
     this.registrationData,
+    this.isRegistration = false,
   });
 
   @override
@@ -22,6 +25,43 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _otpController = TextEditingController();
   bool _isLoading = false;
+
+  Timer? _timer;
+  int _secondsRemaining = 30;
+  bool _canResend = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    setState(() {
+      _secondsRemaining = 30;
+      _canResend = false;
+    });
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining == 0) {
+        setState(() {
+          _canResend = true;
+        });
+        timer.cancel();
+      } else {
+        setState(() {
+          _secondsRemaining--;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +221,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                                 otp: _otpController.text,
                                               );
                                               if (success) {
-                                                showDialog(
+                                                if (mounted) {
+                                                  setState(
+                                                      () => _isLoading = false);
+                                                }
+                                                await showDialog(
                                                   context: context,
                                                   barrierDismissible: false,
                                                   builder: (ctx) => AlertDialog(
@@ -207,6 +251,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                                         onPressed: () {
                                                           Navigator.of(ctx)
                                                               .pop();
+                                                          // Use pushReplacement to ensure the stack is clean but smooth
                                                           Navigator.of(context)
                                                               .pushNamedAndRemoveUntil(
                                                                   '/',
@@ -218,6 +263,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                                     ],
                                                   ),
                                                 );
+                                              } else {
+                                                _showFeedback(
+                                                    'Registration failed. Please try again.',
+                                                    isError: true);
                                               }
                                             } else {
                                               // Standalone verification
@@ -278,27 +327,43 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                             // Resend OTP
                             TextButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : () async {
-                                      final authProvider =
-                                          Provider.of<AuthProvider>(
-                                        context,
-                                        listen: false,
-                                      );
-                                      final source = await authProvider.sendOtp(
-                                        widget.email,
-                                        widget.registrationData ?? {},
-                                      );
-                                      final via = source == 'server'
-                                          ? 'SMS/Server'
-                                          : 'Email';
-                                      _showFeedback('OTP resent via $via');
-                                    },
+                              onPressed: (!_isLoading && _canResend)
+                                  ? () async {
+                                      setState(() => _isLoading = true);
+                                      try {
+                                        final authProvider =
+                                            Provider.of<AuthProvider>(
+                                          context,
+                                          listen: false,
+                                        );
+                                        final source =
+                                            await authProvider.sendOtp(
+                                          widget.email,
+                                          widget.registrationData ?? {},
+                                        );
+                                        final via = source == 'server'
+                                            ? 'SMS/Server'
+                                            : 'Email';
+                                        _showFeedback('OTP resent via $via');
+                                        _startTimer(); // Restart the 30s timer
+                                      } catch (e) {
+                                        _showFeedback(e.toString(),
+                                            isError: true);
+                                      } finally {
+                                        if (mounted) {
+                                          setState(() => _isLoading = false);
+                                        }
+                                      }
+                                    }
+                                  : null,
                               child: Text(
-                                'Resend OTP Code',
+                                _canResend
+                                    ? 'Resend OTP Code'
+                                    : 'Resend in ${_secondsRemaining}s',
                                 style: TextStyle(
-                                  color: Colors.green.shade700,
+                                  color: _canResend
+                                      ? Colors.green.shade700
+                                      : Colors.grey,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

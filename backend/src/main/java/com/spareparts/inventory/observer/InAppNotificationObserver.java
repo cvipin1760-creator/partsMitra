@@ -42,4 +42,17 @@ public class InAppNotificationObserver implements ProductObserver {
     public String getObserverName() {
         return "In-App Notification";
     }
+
+    public void sendOfferNotification(Product product) {
+        Notification notification = new Notification();
+        String offerType = product.getOfferType().name().toLowerCase();
+        notification.setTitle("New " + offerType + " Offer!");
+        notification.setMessage("Special offer on " + product.getName() + "! Only for a limited time.");
+        notification.setTargetRole("ALL");
+
+        notificationRepository.save(notification);
+        
+        // Broadcast via WebSocket
+        messagingTemplate.convertAndSend("/topic/notifications", notification);
+    }
 }

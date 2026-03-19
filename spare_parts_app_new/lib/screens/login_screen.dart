@@ -205,6 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      // For login, we don't send registrationData, so purpose becomes 'login'
       final source = await authProvider.sendOtp(identifier, {});
       setState(() => _otpSource = source);
       setState(() => _otpSent = true);
@@ -279,6 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             : () async {
                                 final ap = Provider.of<AuthProvider>(context,
                                     listen: false);
+                                // Purpose: login
                                 final src = await ap.sendOtp(identifier, {});
                                 setSheet(() => _otpSource = src);
                                 final via =
@@ -372,18 +374,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      final sso = GoogleSSO();
-      final data = await sso.signIn();
-      if (data != null) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final user = await authProvider.signInWithGoogle(
-          data['email'] ?? '',
-          data['name'] ?? '',
-        );
-        if (user != null) {
-          final userName = user.name;
-          _showFeedback('Welcome $userName! Google Sign-In successful.');
-        }
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = await authProvider.signInWithGoogle();
+      if (user != null) {
+        final userName = user.name;
+        _showFeedback('Welcome $userName! Google Sign-In successful.');
       }
     } catch (error) {
       String msg = error.toString();

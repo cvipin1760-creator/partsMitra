@@ -56,6 +56,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.PENDING;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

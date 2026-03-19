@@ -211,6 +211,18 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<OrderDto> getStaffOrders(Long staffId) {
+        // Staff should see orders assigned to them OR orders that are APPROVED and need delivery
+        return orderRepository.findByDeletedFalse().stream()
+                .filter(o -> (o.getDeliveredBy() != null && o.getDeliveredBy().getId().equals(staffId)) 
+                        || o.getStatus() == Order.OrderStatus.APPROVED 
+                        || o.getStatus() == Order.OrderStatus.PACKED
+                        || o.getStatus() == Order.OrderStatus.OUT_FOR_DELIVERY)
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<OrderDto> getAllOrders() {
         return orderRepository.findByDeletedFalse().stream()
                 .map(this::convertToDto)

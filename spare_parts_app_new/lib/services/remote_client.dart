@@ -1,10 +1,16 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
+import 'package:flutter/foundation.dart';
 
 class RemoteClient {
   final String baseUrl = Constants.baseUrl;
+  static const int _maxRetries = 3;
+  static const Duration _timeout = Duration(seconds: 45);
+  static const Duration _retryDelay = Duration(seconds: 2);
 
   Future<Map<String, String>> _getHeaders(Map<String, String>? extra) async {
     final Map<String, String> headers = {'Content-Type': 'application/json'};
@@ -20,22 +26,58 @@ class RemoteClient {
     return headers;
   }
 
+  Future<dynamic> _requestWithRetry(
+    Future<http.Response> Function() requestFn, {
+    bool isList = false,
+  }) async {
+    int attempts = 0;
+    while (attempts < _maxRetries) {
+      try {
+        final res = await requestFn().timeout(_timeout);
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          if (res.body.isEmpty) return isList ? [] : null;
+          return jsonDecode(res.body);
+        }
+        // If it's a 503 or 502, it might be Render waking up/restarting
+        if (res.statusCode == 502 || res.statusCode == 503) {
+          attempts++;
+          if (attempts < _maxRetries) {
+            await Future.delayed(_retryDelay * attempts);
+            continue;
+          }
+        }
+        throw 'HTTP ${res.statusCode}: ${res.body}';
+      } on SocketException catch (e) {
+        attempts++;
+        debugPrint('RemoteClient: SocketException (attempt $attempts): $e');
+        if (attempts >= _maxRetries) rethrow;
+        await Future.delayed(_retryDelay * attempts);
+      } on TimeoutException catch (e) {
+        attempts++;
+        debugPrint('RemoteClient: TimeoutException (attempt $attempts): $e');
+        if (attempts >= _maxRetries) rethrow;
+        await Future.delayed(_retryDelay * attempts);
+      } catch (e) {
+        debugPrint('RemoteClient: Error: $e');
+        rethrow;
+      }
+    }
+  }
+
   Future<dynamic> postJson(
     String path,
     dynamic body, {
     Map<String, String>? headers,
+    Map<String, String>? queryParameters,
   }) async {
     final authHeaders = await _getHeaders(headers);
-    final res = await http.post(
-      Uri.parse('$baseUrl$path'),
-      headers: authHeaders,
-      body: jsonEncode(body),
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return null;
-      return jsonDecode(res.body);
-    }
-    throw 'HTTP ${res.statusCode}: ${res.body}';
+    final uri =
+        Uri.parse('$baseUrl$path').replace(queryParameters: queryParameters);
+    return _requestWithRetry(() => http.post(
+          uri,
+          headers: authHeaders,
+          body: body != null ? jsonEncode(body) : null,
+        ));
   }
 
   Future<dynamic> postMultipart(
@@ -54,8 +96,12 @@ class RemoteClient {
     if (fields != null) {
       req.fields.addAll(fields);
     }
-    req.files.add(http.MultipartFile.fromBytes(fileField, bytes, filename: fileName));
-    final streamed = await req.send();
+    req.files
+        .add(http.MultipartFile.fromBytes(fileField, bytes, filename: fileName));
+
+    // For multipart, we can't easily use _requestWithRetry because of the stream
+    // but we can add a timeout to the send() call.
+    final streamed = await req.send().timeout(_timeout);
     final res = await http.Response.fromStream(streamed);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       if (res.body.isEmpty) return null;
@@ -69,15 +115,10 @@ class RemoteClient {
     Map<String, String>? headers,
   }) async {
     final authHeaders = await _getHeaders(headers);
-    final res = await http.get(
-      Uri.parse('$baseUrl$path'),
-      headers: authHeaders,
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return null;
-      return jsonDecode(res.body);
-    }
-    throw 'HTTP ${res.statusCode}: ${res.body}';
+    return _requestWithRetry(() => http.get(
+          Uri.parse('$baseUrl$path'),
+          headers: authHeaders,
+        ));
   }
 
   Future<List<dynamic>> getList(
@@ -85,15 +126,14 @@ class RemoteClient {
     Map<String, String>? headers,
   }) async {
     final authHeaders = await _getHeaders(headers);
-    final res = await http.get(
-      Uri.parse('$baseUrl$path'),
-      headers: authHeaders,
+    final res = await _requestWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl$path'),
+        headers: authHeaders,
+      ),
+      isList: true,
     );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return [];
-      return jsonDecode(res.body) as List<dynamic>;
-    }
-    throw 'HTTP ${res.statusCode}: ${res.body}';
+    return res as List<dynamic>;
   }
 
   Future<dynamic> putJson(
@@ -102,27 +142,18 @@ class RemoteClient {
     Map<String, String>? headers,
   }) async {
     final authHeaders = await _getHeaders(headers);
-    final res = await http.put(
-      Uri.parse('$baseUrl$path'),
-      headers: authHeaders,
-      body: jsonEncode(body),
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return null;
-      return jsonDecode(res.body);
-    }
-    throw 'HTTP ${res.statusCode}: ${res.body}';
+    return _requestWithRetry(() => http.put(
+          Uri.parse('$baseUrl$path'),
+          headers: authHeaders,
+          body: jsonEncode(body),
+        ));
   }
 
   Future<void> delete(String path, {Map<String, String>? headers}) async {
     final authHeaders = await _getHeaders(headers);
-    final res = await http.delete(
-      Uri.parse('$baseUrl$path'),
-      headers: authHeaders,
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      return;
-    }
-    throw 'HTTP ${res.statusCode}: ${res.body}';
+    await _requestWithRetry(() => http.delete(
+          Uri.parse('$baseUrl$path'),
+          headers: authHeaders,
+        ));
   }
 }

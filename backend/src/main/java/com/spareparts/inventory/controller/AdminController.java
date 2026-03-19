@@ -196,6 +196,17 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/products/{productId}/offer")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<?> setProductOffer(
+            @PathVariable Long productId,
+            @RequestParam String offerType,
+            @RequestParam(defaultValue = "false") boolean notifyWhatsApp,
+            @RequestParam(defaultValue = "true") boolean notifyInApp) {
+        productService.setProductOffer(productId, offerType, notifyWhatsApp, notifyInApp);
+        return ResponseEntity.ok().build();
+    }
+
     @PutMapping("/users/update-location")
     public ResponseEntity<?> updateUserLocationBody(@RequestBody Map<String, Object> body) {
         Object idObj = body.get("userId");

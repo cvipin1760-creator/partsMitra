@@ -1,135 +1,118 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import './db_universal.dart';
-import './remote_client.dart';
+import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
 
 class NotificationService {
-  final DatabaseService _dbService = DatabaseService();
-  final RemoteClient _remote = RemoteClient();
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
-  // ===============================
-  // SEND NOTIFICATION
-  // ===============================
-
-  Future<void> sendNotification(
-    String title,
-    String message,
-    String targetRole, {
-    String? imageUrl,
-  }) async {
-    try {
-      if (Constants.useRemote) {
-        final prefs = await SharedPreferences.getInstance();
-        final userStr = prefs.getString('user');
-
-        if (userStr == null) return;
-
-        final user = jsonDecode(userStr);
-        final token = user['token'];
-
-        await http.post(
-          Uri.parse('${Constants.baseUrl}/notifications'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode({
-            'title': title,
-            'message': message,
-            'targetRole': targetRole,
-            'imageUrl': imageUrl,
-          }),
-        );
-
-        return;
-      }
-
-      final db = await _dbService.database;
-
-      await db.insert('notifications', {
-        'title': title,
-        'message': message,
-        'targetRole': targetRole,
-        'imageUrl': imageUrl,
-        'createdAt': DateTime.now().toIso8601String(),
-        'isRead': 0,
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Send notification error: $e');
-      }
-    }
+  static Future<void> initialize() async {
+    // Configure local notifications
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+    await _localNotifications.initialize(initializationSettings);
   }
 
-  // ===============================
-  // GET MY NOTIFICATIONS
-  // ===============================
-
-  Future<List<Map<String, dynamic>>> getMyNotifications(String myRole) async {
-    try {
-      if (Constants.useRemote) {
-        final list = await _remote.getList('/notifications/my?role=$myRole');
-        return list.cast<Map<String, dynamic>>();
-      }
-
-      final db = await _dbService.database;
-
-      return await db.query(
-        'notifications',
-        where: 'targetRole = ? OR targetRole = "ALL"',
-        whereArgs: [myRole],
-        orderBy: 'createdAt DESC',
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Get notifications error: $e');
-      }
-      return [];
-    }
+  static void showLocalNotification(String title, String body) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'spare_parts_channel',
+      'Spare Parts Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await _localNotifications.show(
+      0,
+      title,
+      body,
+      platformChannelSpecifics,
+    );
+    await _saveNotificationLocally(title, body);
   }
 
-  // ===============================
-  // READ ACTIONS
-  // ===============================
+  static Future<void> _saveNotificationLocally(
+      String title, String body) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> notifications =
+        prefs.getStringList('local_notifications') ?? [];
+    Map<String, dynamic> data = {
+      'title': title,
+      'body': body,
+      'createdAt': DateTime.now().toIso8601String(),
+    };
+    notifications.add(jsonEncode(data));
+    await prefs.setStringList('local_notifications', notifications);
+  }
+
+  static Future<List<Map<String, dynamic>>> getLocalHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> notifications =
+        prefs.getStringList('local_notifications') ?? [];
+    return notifications
+        .map((e) => jsonDecode(e) as Map<String, dynamic>)
+        .toList()
+        .reversed
+        .toList();
+  }
+
+  static Future<List<dynamic>> fetchRemoteHistory(String role,
+      {int? userId}) async {
+    try {
+      String url = "${Constants.baseUrl}/notifications/my?role=$role";
+      if (userId != null) {
+        url += "&userId=$userId";
+      }
+      final res = await http.get(Uri.parse(url));
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch remote history: $e");
+    }
+    return [];
+  }
+
+  // Compatibility methods for NotificationProvider
+  Future<List<Map<String, dynamic>>> getMyNotifications(String role,
+      {int? userId}) async {
+    final remote = await fetchRemoteHistory(role, userId: userId);
+    final local = await getLocalHistory();
+    return [...remote.map((e) => e as Map<String, dynamic>), ...local];
+  }
+
+  Future<int> getUnreadCount(String role) async {
+    return 0;
+  }
 
   Future<void> markAllAsRead() async {
-    try {
-      if (Constants.useRemote) {
-        await _remote.postJson('/notifications/read-all', {});
-        return;
-      }
-
-      final db = await _dbService.database;
-      await db.update('notifications', {'isRead': 1});
-    } catch (e) {
-      if (kDebugMode) debugPrint('Mark all as read error: $e');
-    }
+    // Placeholder
   }
 
-  Future<int> getUnreadCount(String myRole) async {
+  Future<void> sendNotification(String title, String message, String targetRole,
+      {String? imageUrl}) async {
     try {
-      if (Constants.useRemote) {
-        final res =
-            await _remote.getJson('/notifications/unread-count?role=$myRole');
-        if (res != null && res['count'] != null) {
-          return (res['count'] as num).toInt();
-        }
-        return 0;
-      }
+      String endpoint = targetRole == 'ALL'
+          ? "/notifications/send/broadcast"
+          : "/notifications/send/role/$targetRole";
 
-      final db = await _dbService.database;
-      final result = await db.rawQuery(
-        'SELECT COUNT(*) as count FROM notifications WHERE (targetRole = ? OR targetRole = "ALL") AND isRead = 0',
-        [myRole],
+      await http.post(
+        Uri.parse("${Constants.baseUrl}$endpoint"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "title": title,
+          "message": message,
+          if (imageUrl != null) "imageUrl": imageUrl,
+        }),
       );
-      if (result.isEmpty) return 0;
-      return (result.first['count'] as num).toInt();
     } catch (e) {
-      return 0;
+      debugPrint("Failed to send notification: $e");
     }
   }
 }

@@ -18,14 +18,24 @@ class EmailService {
       ..text = 'Your OTP is $otp';
 
     try {
-      final sendReport = await send(message, smtpServer);
       if (kDebugMode) {
-        debugPrint('OTP email sent');
+        debugPrint('EmailService: Sending OTP email to $recipientEmail...');
+      }
+      final sendReport =
+          await send(message, smtpServer).timeout(const Duration(seconds: 30));
+      if (kDebugMode) {
+        debugPrint('OTP email sent successfully: $sendReport');
       }
     } on MailerException catch (e) {
       if (kDebugMode) {
-        debugPrint('OTP email failed to send.');
+        debugPrint('OTP email failed to send (MailerException): $e');
       }
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('OTP email failed to send (General Exception): $e');
+      }
+      rethrow;
     }
   }
 }

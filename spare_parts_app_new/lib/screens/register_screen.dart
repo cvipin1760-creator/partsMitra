@@ -2,12 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 import 'otp_verification_screen.dart';
-import '../services/sso_mobile.dart'
-    if (dart.library.html) '../services/sso_web.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 class RegisterScreen extends StatefulWidget {
   final bool showAppBar;
@@ -92,12 +90,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
     try {
       Position position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
       );
+
       setState(() {
         _latitude = position.latitude;
         _longitude = position.longitude;
       });
+
+      // Reverse Geocoding to get address
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+          String address = [
+            if (place.street != null && place.street!.isNotEmpty) place.street,
+            if (place.subLocality != null && place.subLocality!.isNotEmpty)
+              place.subLocality,
+            if (place.locality != null && place.locality!.isNotEmpty)
+              place.locality,
+            if (place.administrativeArea != null &&
+                place.administrativeArea!.isNotEmpty)
+              place.administrativeArea,
+            if (place.postalCode != null && place.postalCode!.isNotEmpty)
+              place.postalCode,
+            if (place.country != null && place.country!.isNotEmpty)
+              place.country,
+          ].join(', ');
+
+          setState(() {
+            _addressController.text = address;
+          });
+        }
+      } catch (e) {
+        debugPrint('Reverse geocoding error: $e');
+      }
+
       _showFeedback('Location captured successfully!');
     } catch (e) {
       _showFeedback('Error getting location: $e', isError: true);
@@ -173,17 +206,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
       debugPrint('RegisterScreen: OTP source: $source');
 
       if (mounted) {
-        _showFeedback(
-            'OTP sent to your ${_isEmailRegistration ? "email" : "mobile"}.');
-        debugPrint('RegisterScreen: Navigating to OtpVerificationScreen...');
-        Navigator.of(context).push(
+        final otp = await Navigator.of(context).push<String>(
           MaterialPageRoute(
             builder: (_) => OtpVerificationScreen(
               email: target,
-              registrationData: registrationData,
+              isRegistration: true,
             ),
           ),
         );
+
+        if (otp != null && otp.isNotEmpty) {
+          try {
+            final success = await authProvider.register(
+              name,
+              _isEmailRegistration ? email : '$phone@spares.hub',
+              password,
+              _selectedRole,
+              phone,
+              address,
+              latitude: _latitude,
+              longitude: _longitude,
+              otp: otp,
+            );
+
+            if (success) {
+              _showFeedback('Registration successful! Please log in.');
+              Navigator.of(context).pop(); // Go back to login screen
+            }
+          } catch (e) {
+            String msg = e.toString();
+            if (msg.startsWith('Exception: ')) {
+              msg = msg.replaceFirst('Exception: ', '');
+            }
+            _showFeedback('Registration failed: $msg', isError: true);
+          }
+        }
       }
     } catch (e) {
       debugPrint('RegisterScreen: Error in registration flow: $e');
@@ -192,31 +249,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         msg = msg.replaceFirst('Exception: ', '');
       }
       _showFeedback('Failed to send OTP: $msg', isError: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      final sso = GoogleSSO();
-      final data = await sso.signIn();
-      if (data != null) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final user = await authProvider.signInWithGoogle(
-          data['email'] ?? '',
-          data['name'] ?? '',
-        );
-        if (user != null) {
-          _showFeedback('Google Sign-In successful!');
-        }
-      }
-    } catch (e) {
-      String msg = e.toString();
-      if (msg.contains('Exception: '))
-        msg = msg.replaceFirst('Exception: ', '');
-      _showFeedback('Google Sign-In failed: $msg', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -463,25 +495,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _socialIconButton(String iconUrl, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: SvgPicture.network(
-          iconUrl,
-          height: 24,
-          width: 24,
         ),
       ),
     );

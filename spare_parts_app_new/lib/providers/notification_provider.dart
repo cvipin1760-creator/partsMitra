@@ -33,7 +33,7 @@ class NotificationProvider with ChangeNotifier {
     await _localNotifications.initialize(initializationSettings);
   }
 
-  void init(String role) {
+  void init(String role, {int? userId}) {
     if (_isConnected) return;
 
     _wsService.connect((data) {
@@ -43,7 +43,7 @@ class NotificationProvider with ChangeNotifier {
       notifyListeners();
     });
     _isConnected = true;
-    _fetchNotifications(role);
+    _fetchNotifications(role, userId: userId);
   }
 
   Future<void> _showLocalNotification(Map<String, dynamic> data) async {
@@ -67,8 +67,8 @@ class NotificationProvider with ChangeNotifier {
     );
   }
 
-  Future<void> _fetchNotifications(String role) async {
-    final list = await _apiService.getMyNotifications(role);
+  Future<void> _fetchNotifications(String role, {int? userId}) async {
+    final list = await _apiService.getMyNotifications(role, userId: userId);
     _notifications = list;
     _unreadCount = await _apiService.getUnreadCount(role);
     notifyListeners();

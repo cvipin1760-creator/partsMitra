@@ -49,4 +49,6 @@ public class ProductDto {
     private String categoryName;
     private String categoryImagePath;
     private String categoryImageLink;
+    
+    private String offerType;
 }

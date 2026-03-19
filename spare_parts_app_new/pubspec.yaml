@@ -52,6 +52,7 @@ dependencies:
 
   # Location
   geolocator: ^14.0.2
+  geocoding: ^3.0.0
 
   # URL Launcher
   url_launcher: ^6.3.2
@@ -82,6 +83,7 @@ dependencies:
 
   # Notifications
   flutter_local_notifications: ^17.2.3
+  firebase_core: ^3.10.1
 
   # Password hashing
   bcrypt: ^1.1.3

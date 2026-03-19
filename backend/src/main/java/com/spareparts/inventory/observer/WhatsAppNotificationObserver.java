@@ -44,4 +44,20 @@ public class WhatsAppNotificationObserver implements ProductObserver {
     public String getObserverName() {
         return "WhatsApp Notification";
     }
+
+    public void sendOfferNotification(Product product) {
+        List<User> users = userRepository.findByDeletedFalse();
+        String offerType = product.getOfferType().name().toLowerCase();
+        
+        String message = "🔥 NEW " + offerType.toUpperCase() + " OFFER! 🔥\n" +
+                         "Product: " + product.getName() + "\n" +
+                         "Check out this special offer in Spares Hub now!";
+
+        for (User user : users) {
+            if (user.getPhone() != null && !user.getPhone().isEmpty()) {
+                // Simulating WhatsApp message sending
+                System.out.println("[WHATSAPP SENT TO " + user.getPhone() + "]: " + message);
+            }
+        }
+    }
 }

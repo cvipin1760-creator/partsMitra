@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import 'mechanic_search_screen.dart';
 import 'retailer_orders_screen.dart';
 import 'profile_screen.dart';
+import 'offers_screen.dart';
 import 'notification_screen.dart';
 import '../widgets/ai_chatbot_widget.dart';
 import '../services/settings_service.dart';
@@ -23,6 +24,7 @@ class _MechanicDashboardState extends State<MechanicDashboard> {
 
   static const List<Widget> _widgetOptions = <Widget>[
     MechanicSearchScreen(),
+    OffersScreen(),
     RetailerOrdersScreen(),
     ProfileScreen(),
   ];
@@ -103,6 +105,11 @@ class _MechanicDashboardState extends State<MechanicDashboard> {
               icon: Icon(Icons.search_outlined),
               selectedIcon: Icon(Icons.search),
               label: 'Search',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.local_offer_outlined),
+              selectedIcon: Icon(Icons.local_offer),
+              label: 'Offers',
             ),
             NavigationDestination(
               icon: Icon(Icons.shopping_cart_outlined),

@@ -211,7 +211,17 @@ class OrderService {
   Future<List<Order>> getMyOrders() async {
     try {
       if (Constants.useRemote) {
-        final list = await _remote.getList('/orders/my-orders');
+        final prefs = await SharedPreferences.getInstance();
+        final userStr = prefs.getString('user');
+        if (userStr == null) return [];
+        final currentUser = User.fromJson(jsonDecode(userStr));
+
+        String endpoint = '/orders/my-orders';
+        if (currentUser.roles.contains(Constants.roleStaff)) {
+          endpoint = '/orders/staff-orders';
+        }
+
+        final list = await _remote.getList(endpoint);
         return list
             .map((e) => Order.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -222,10 +232,20 @@ class OrderService {
       final currentUser = User.fromJson(jsonDecode(userStr));
 
       final db = await _dbService.database;
+
+      String whereClause = '(customerId = ? OR sellerId = ?) AND deleted = 0';
+      List<dynamic> whereArgs = [currentUser.id, currentUser.id];
+
+      if (currentUser.roles.contains(Constants.roleStaff)) {
+        whereClause =
+            '(customerId = ? OR sellerId = ? OR deliveredBy = ? OR status = "APPROVED" OR status = "PACKED" OR status = "OUT_FOR_DELIVERY") AND deleted = 0';
+        whereArgs = [currentUser.id, currentUser.id, currentUser.name];
+      }
+
       final maps = await db.query(
         'orders',
-        where: '(customerId = ? OR sellerId = ?) AND deleted = 0',
-        whereArgs: [currentUser.id, currentUser.id],
+        where: whereClause,
+        whereArgs: whereArgs,
         orderBy: 'id DESC',
       );
 

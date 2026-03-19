@@ -24,8 +24,14 @@ public class Notification {
     @Column(nullable = false, length = 1000)
     private String message;
 
-    @Column(nullable = false)
-    private String targetRole; // e.g., "ROLE_ADMIN", "ROLE_MECHANIC", "ALL"
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "target_role")
+    private String targetRole;
+
+    @Column(name = "is_broadcast")
+    private boolean isBroadcast = false;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
