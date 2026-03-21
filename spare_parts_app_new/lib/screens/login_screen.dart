@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
@@ -287,9 +288,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: tempOtpController,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
                   decoration: const InputDecoration(
                     labelText: '6-Digit OTP',
                     border: OutlineInputBorder(),
+                    counterText: '', // hide counter to avoid narrow overflows
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -664,42 +670,50 @@ class _LoginScreenState extends State<LoginScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _isOtpLogin = !_isOtpLogin;
-                                    _otpSent = false;
-                                    _otpController.clear();
-                                  });
-                                },
-                                child: Text(
-                                  _isOtpLogin
-                                      ? lp.translate('login_pass_switch')
-                                      : lp.translate('login_otp_switch'),
-                                  style: TextStyle(
-                                    color: Colors.green.shade700,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                              if (!_isOtpLogin)
-                                TextButton(
+                              Flexible(
+                                child: TextButton(
                                   onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const ForgotPasswordScreen(),
-                                      ),
-                                    );
+                                    setState(() {
+                                      _isOtpLogin = !_isOtpLogin;
+                                      _otpSent = false;
+                                      _otpController.clear();
+                                    });
                                   },
                                   child: Text(
-                                    lp.translate('login_forgot_pass'),
+                                    _isOtpLogin
+                                        ? lp.translate('login_pass_switch')
+                                        : lp.translate('login_otp_switch'),
                                     style: TextStyle(
                                       color: Colors.green.shade700,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
+                                    ),
+                                    textAlign: TextAlign.start,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              if (!_isOtpLogin)
+                                Flexible(
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const ForgotPasswordScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      lp.translate('login_forgot_pass'),
+                                      style: TextStyle(
+                                        color: Colors.green.shade700,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                      textAlign: TextAlign.end,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
@@ -770,10 +784,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _socialIconButton(
-                        'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                        _handleGoogleSignIn,
-                      ),
+                      _googleButton(_handleGoogleSignIn),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -850,25 +861,21 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _socialIconButton(String iconUrl, VoidCallback onTap) {
+  Widget _googleButton(VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Colors.white.withOpacity(0.7)),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: SvgPicture.network(
-          iconUrl,
-          height: 24,
-          width: 24,
-          placeholderBuilder: (ctx) => const Icon(
-            Icons.g_mobiledata,
-            color: Colors.redAccent,
-            size: 24,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.g_mobiledata, color: Colors.white, size: 28),
+          ],
         ),
       ),
     );

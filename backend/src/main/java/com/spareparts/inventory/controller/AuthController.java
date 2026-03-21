@@ -65,16 +65,15 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        String purpose = body.getOrDefault("purpose", "login").toLowerCase();
-        
-        if (email == null || !email.contains("@")) {
-            // If it's a mobile number (no @), we can't easily check userRepository by email
-            // But for now, let's assume it's always an email or formatted as one
-            if (email == null || email.isEmpty()) {
-                return ResponseEntity.badRequest().body(new MessageResponse("Invalid identifier."));
-            }
+        String identifier = body.get("email");
+        if (identifier == null || identifier.isEmpty()) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Invalid identifier."));
         }
+        
+        // Normalize: if it's an email, lowercase it. If it's a phone, keep as is.
+        final String email = identifier.contains("@") ? identifier.toLowerCase().trim() : identifier.trim();
+        
+        String purpose = body.getOrDefault("purpose", "login").toLowerCase();
 
         // For signup, ensure user does NOT exist
         if ("signup".equals(purpose)) {
@@ -170,9 +169,11 @@ public class AuthController {
                     .or(() -> userRepository.findByPhoneAndDeletedFalse(phoneNumber.replace("+", "")))
                     .orElseThrow(() -> new RuntimeException("User not found with this phone number. Please register first."));
 
+            /*
             if (user.getStatus() != User.UserStatus.ACTIVE) {
                 return ResponseEntity.status(403).body(new MessageResponse("Your account is not active. Status: " + user.getStatus()));
             }
+            */
 
             // 3. Generate JWT
             String jwt = jwtUtils.generateJwtTokenFromUsername(user.getEmail());
@@ -195,15 +196,19 @@ public class AuthController {
 
     @PostMapping("/otp-login")
     public ResponseEntity<?> otpLogin(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
+        String identifier = body.get("email");
         String otp = body.get("otp");
 
-        if (email == null || otp == null) {
+        if (identifier == null || otp == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Email and OTP are required."));
         }
+        
+        // Normalize
+        final String email = identifier.contains("@") ? identifier.toLowerCase().trim() : identifier.trim();
 
         String storedOtp = OTP_STORAGE.get(email);
         if (storedOtp == null || !storedOtp.equals(otp)) {
+            System.out.println("OTP Verification Failed for " + email + ". Received: " + otp + ", Stored: " + storedOtp);
             return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
         }
 
@@ -269,6 +274,7 @@ public class AuthController {
         // Verify OTP
         String storedOtp = OTP_STORAGE.get(signUpRequest.getEmail());
         if (storedOtp == null || !storedOtp.equals(signUpRequest.getOtp())) {
+            System.out.println("Signup OTP Verification Failed for " + signUpRequest.getEmail() + ". Received: " + signUpRequest.getOtp() + ", Stored: " + storedOtp);
             return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
         }
 
@@ -340,13 +346,16 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
+        String identifier = body.get("email");
         String otp = body.get("otp");
         String newPassword = body.get("newPassword");
 
-        if (email == null || otp == null || newPassword == null) {
+        if (identifier == null || otp == null || newPassword == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Email, OTP, and new password are required."));
         }
+        
+        // Normalize
+        final String email = identifier.contains("@") ? identifier.toLowerCase().trim() : identifier.trim();
 
         String storedOtp = OTP_STORAGE.get(email);
         if (storedOtp == null || !storedOtp.equals(otp)) {

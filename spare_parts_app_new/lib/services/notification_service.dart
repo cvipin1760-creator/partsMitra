@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
@@ -40,6 +41,18 @@ class NotificationService {
         }
       },
     );
+    final androidSpecific =
+        _localNotifications.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await androidSpecific?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        'spare_parts_channel',
+        'Spare Parts Notifications',
+        description: 'Order updates and promotional offers',
+        importance: Importance.high,
+      ),
+    );
+    await Permission.notification.request();
     // Android 13+ permission prompt will be handled by the system when needed.
 
     // 2. Request FCM permissions
@@ -52,6 +65,27 @@ class NotificationService {
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       if (kDebugMode) debugPrint('User granted notification permission');
     }
+
+    // 2b. Handle FCM token refresh (e.g., app reinstall, token rotation)
+    _fcm.onTokenRefresh.listen((token) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final lastUserId = prefs.getInt('last_user_id');
+        final lastRole = prefs.getString('last_role');
+        if (lastUserId != null) {
+          await updateTokenOnServer(lastUserId, token);
+        }
+        if (lastRole != null && lastRole.isNotEmpty) {
+          await subscribeToTopicsForRole(lastRole);
+        }
+        if (kDebugMode) {
+          debugPrint(
+              'FCM token refreshed and synced. Role=$lastRole User=$lastUserId');
+        }
+      } catch (e) {
+        debugPrint('Failed handling token refresh: $e');
+      }
+    });
 
     // 3. Handle foreground FCM messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -161,9 +195,18 @@ class NotificationService {
       );
       if (response.statusCode == 200) {
         if (kDebugMode) debugPrint("FCM Token updated on server");
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('pending_fcm_user');
+        await prefs.remove('pending_fcm_token');
       }
     } catch (e) {
       debugPrint("Failed to update FCM token on server: $e");
+      // Persist for retry when network returns
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('pending_fcm_user', userId);
+        await prefs.setString('pending_fcm_token', token);
+      } catch (_) {}
     }
   }
 
@@ -314,12 +357,47 @@ class NotificationService {
     return [...remote.map((e) => e as Map<String, dynamic>), ...local];
   }
 
+  static Future<void> rememberIdentity(String role, {int? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_role', role);
+      if (userId != null) {
+        await prefs.setInt('last_user_id', userId);
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> attemptPendingFcmSync({int? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pendingUser = prefs.getInt('pending_fcm_user');
+      final pendingToken = prefs.getString('pending_fcm_token');
+      if (pendingToken != null && (pendingUser != null || userId != null)) {
+        final uid = userId ?? pendingUser!;
+        await updateTokenOnServer(uid, pendingToken);
+      }
+    } catch (_) {}
+  }
+
   static Future<void> subscribeToTopicsForRole(String role) async {
     try {
       await _fcm.subscribeToTopic('all-users');
       await _fcm.subscribeToTopic('role-$role');
     } catch (e) {
       debugPrint('Error subscribing to topics: $e');
+    }
+  }
+
+  static Future<void> subscribeToTopicsForRoles(List<String> roles) async {
+    try {
+      await _fcm.subscribeToTopic('all-users');
+      for (final r in roles) {
+        if (r.isNotEmpty) {
+          await _fcm.subscribeToTopic('role-$r');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error subscribing to multi-role topics: $e');
     }
   }
 

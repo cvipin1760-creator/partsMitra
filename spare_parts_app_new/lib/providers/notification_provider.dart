@@ -38,6 +38,7 @@ class NotificationProvider with ChangeNotifier {
     if (_isConnected) return;
 
     NotificationService.subscribeToTopicsForRole(role);
+    NotificationService.rememberIdentity(role, userId: userId);
     _wsService.connect(
       (data) {
         _notifications.insert(0, data);

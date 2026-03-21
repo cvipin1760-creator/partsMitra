@@ -29,6 +29,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.StreamSupport;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity.BodyBuilder;
+import com.spareparts.inventory.repository.VoiceTrainingSampleRepository;
+import com.spareparts.inventory.entity.VoiceTrainingSample;
 import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -57,6 +66,9 @@ public class AdminController {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private VoiceTrainingSampleRepository voiceTrainingSampleRepository;
+
     @GetMapping("/settings")
     public ResponseEntity<List<SystemSetting>> getAllSettings() {
         return ResponseEntity.ok(systemSettingRepository.findAll());
@@ -70,6 +82,42 @@ public class AdminController {
     @PostMapping("/settings/bulk")
     public ResponseEntity<?> updateSettingsBulk(@RequestBody List<SystemSetting> settings) {
         return ResponseEntity.ok(systemSettingRepository.saveAll(settings));
+    }
+
+    @GetMapping("/ai/voice/samples")
+    public ResponseEntity<?> getVoiceSamples(@RequestParam(required = false) String role,
+                                             @RequestParam(required = false) String from,
+                                             @RequestParam(required = false) String to,
+                                             @RequestParam(defaultValue = "0") int page,
+                                             @RequestParam(defaultValue = "50") int size,
+                                             @RequestParam(required = false) Boolean export) {
+        LocalDateTime fromDt = null, toDt = null;
+        try {
+            if (from != null && !from.isEmpty()) fromDt = LocalDateTime.parse(from);
+            if (to != null && !to.isEmpty()) toDt = LocalDateTime.parse(to);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body("Invalid date format. Use ISO-8601, e.g., 2026-03-19T00:00:00");
+        }
+        var pageData = voiceTrainingSampleRepository.findFiltered(role, fromDt, toDt, PageRequest.of(page, size));
+        if (Boolean.TRUE.equals(export)) {
+            StringBuilder csv = new StringBuilder();
+            csv.append("id,createdAt,userId,role,query,productId,productName,price\n");
+            for (VoiceTrainingSample s : pageData.getContent()) {
+                csv.append(s.getId() == null ? "" : s.getId()).append(",")
+                   .append(s.getCreatedAt()).append(",")
+                   .append(s.getUserId() == null ? "" : s.getUserId()).append(",")
+                   .append(s.getRole() == null ? "" : s.getRole()).append(",")
+                   .append(s.getQuery() == null ? "" : s.getQuery().replace(',', ' ')).append(",")
+                   .append(s.getProductId() == null ? "" : s.getProductId()).append(",")
+                   .append(s.getProductName() == null ? "" : s.getProductName().replace(',', ' ')).append(",")
+                   .append(s.getPrice() == null ? "" : s.getPrice()).append("\n");
+            }
+            BodyBuilder builder = ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=voice_training_samples.csv")
+                    .contentType(MediaType.parseMediaType("text/csv"));
+            return builder.body(csv.toString());
+        }
+        return ResponseEntity.ok(pageData);
     }
 
     @GetMapping("/users")

@@ -156,10 +156,12 @@ class AuthService {
   // =============================
 
   Future<User?> login(String identifier, String password) async {
+    final normalizedIdentifier =
+        identifier.contains('@') ? identifier.toLowerCase() : identifier;
     try {
       if (Constants.useRemote) {
         final json = await _remote.postJson('/auth/signin', {
-          'email': identifier,
+          'email': normalizedIdentifier,
           'password': password,
         });
 
@@ -175,9 +177,11 @@ class AuthService {
         }).toList();
 
         final status = (json['status'] ?? 'ACTIVE').toString();
+        /*
         if (status != 'ACTIVE') {
           throw Exception('Your account is not active yet.');
         }
+        */
         final user = User(
           id: id,
           email: emailVal,
@@ -252,10 +256,12 @@ class AuthService {
   }
 
   Future<User?> loginWithOtp(String identifier, String otp) async {
+    final normalizedIdentifier =
+        identifier.contains('@') ? identifier.toLowerCase() : identifier;
     try {
       if (Constants.useRemote) {
         final json = await _remote.postJson(Constants.otpLoginPath, {
-          'email': identifier,
+          'email': normalizedIdentifier,
           'otp': otp,
         });
 
@@ -271,9 +277,11 @@ class AuthService {
         }).toList();
 
         final status = (json['status'] ?? 'ACTIVE').toString();
+        /*
         if (status != 'ACTIVE') {
           throw Exception('Your account is not active yet.');
         }
+        */
         final user = User(
           id: id,
           email: emailVal,
@@ -378,10 +386,11 @@ class AuthService {
     double? longitude,
     String? otp,
   }) async {
+    final normalizedEmail = email.toLowerCase();
     if (Constants.useRemote) {
       final body = {
         'name': name,
-        'email': email,
+        'email': normalizedEmail,
         'password': password,
         'phone': phone,
         'address': address,
@@ -717,15 +726,18 @@ class AuthService {
     String identifier,
     Map<String, dynamic> registrationData,
   ) async {
-    final isEmail = identifier.contains('@');
+    final normalizedIdentifier =
+        identifier.contains('@') ? identifier.toLowerCase() : identifier;
+    final isEmail = normalizedIdentifier.contains('@');
 
     if (Constants.useRemote && !Constants.forceLocalOtp) {
       try {
         if (kDebugMode) {
-          debugPrint('AuthService: Requesting remote OTP for $identifier...');
+          debugPrint(
+              'AuthService: Requesting remote OTP for $normalizedIdentifier...');
         }
         final body = {
-          'email': identifier,
+          'email': normalizedIdentifier,
           'purpose': (registrationData.isNotEmpty ? 'signup' : 'login'),
         };
         await _remote.postJson('/auth/send-otp', body);
@@ -753,7 +765,7 @@ class AuthService {
 
     if (isEmail) {
       try {
-        await _emailService.sendOtp(identifier, _otp!);
+        await _emailService.sendOtp(normalizedIdentifier, _otp!);
         return 'email';
       } catch (e) {
         if (kDebugMode) debugPrint('Local Email OTP failed: $e');
@@ -773,14 +785,15 @@ class AuthService {
   }
 
   Future<void> sendPasswordResetOtp(String email) async {
+    final normalizedEmail = email.toLowerCase();
     try {
       if (Constants.useRemote && !Constants.forceLocalOtp) {
-        final body = {'email': email, 'purpose': 'reset'};
+        final body = {'email': normalizedEmail, 'purpose': 'reset'};
         await _remote.postJson('/auth/send-otp', body);
         _otp = null;
       } else {
         _otp = (100000 + Random().nextInt(900000)).toString();
-        await _emailService.sendOtp(email, _otp!);
+        await _emailService.sendOtp(normalizedEmail, _otp!);
       }
     } catch (e) {
       rethrow;
@@ -804,9 +817,10 @@ class AuthService {
     String otp,
     String newPassword,
   ) async {
+    final normalizedEmail = email.toLowerCase();
     if (Constants.useRemote) {
       final res = await _remote.postJson('/auth/reset-password', {
-        'email': email,
+        'email': normalizedEmail,
         'otp': otp,
         'newPassword': newPassword,
       });

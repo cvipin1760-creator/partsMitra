@@ -18,6 +18,7 @@ import '../utils/constants.dart';
 
 import 'package:spare_parts_app/providers/auth_provider.dart';
 import 'package:spare_parts_app/screens/edit_product_screen.dart';
+import '../services/ai_training_service.dart';
 
 class MechanicSearchScreen extends StatefulWidget {
   const MechanicSearchScreen({super.key});
@@ -31,6 +32,7 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
   final OrderService _orderService = OrderService();
   final OCRService _ocrService = OCRService();
   final stt.SpeechToText _speech = stt.SpeechToText();
+  final AITrainingService _aiTraining = AITrainingService();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final _translator = GoogleTranslator();
@@ -315,6 +317,14 @@ class _MechanicSearchScreenState extends State<MechanicSearchScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Added $qty x ${product.name} to cart')),
       );
+      try {
+        await _aiTraining.submitVoiceAdd(
+          query: finalQuery,
+          productId: product.id,
+          productName: product.name,
+          price: price,
+        );
+      } catch (_) {}
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Voice add failed: $e')),

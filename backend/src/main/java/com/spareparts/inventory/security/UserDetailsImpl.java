@@ -84,11 +84,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return authorities.stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || 
-                              a.getAuthority().equals("ROLE_SUPER_MANAGER") || 
-                              a.getAuthority().equals("ROLE_STAFF")) || 
-               User.UserStatus.ACTIVE.name().equals(status);
+        return true; // Allow all users to log in, app will handle PENDING status
     }
 
     @Override

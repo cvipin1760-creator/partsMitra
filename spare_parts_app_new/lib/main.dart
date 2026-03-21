@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/theme_provider.dart';
 import 'providers/notification_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/retailer_dashboard.dart';
@@ -18,8 +19,14 @@ import 'utils/constants.dart';
 import 'screens/auth_home_screen.dart';
 import 'screens/offers_screen.dart';
 import 'screens/retailer_orders_screen.dart';
+import 'screens/user_settings_screen.dart';
+import 'widgets/oem_battery_prompt.dart';
+import 'screens/admin_ai_training_report_screen.dart';
+import 'screens/thank_you_screen.dart';
+import 'screens/pending_approval_screen.dart';
 
 import 'services/notification_service.dart';
+import 'utils/app_theme.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -43,6 +50,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
@@ -57,76 +65,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tprov = Provider.of<ThemeProvider>(context);
+    final tm = tprov.themeMode;
+    final seed = tprov.seedColor;
+    final textScale = tprov.textScale;
     return MaterialApp(
       navigatorKey: _navigatorKey,
       title: 'Spares Hub',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2E7D32), // Emerald Green
-          primary: const Color(0xFF2E7D32),
-          secondary: const Color(0xFF1565C0), // Royal Blue
-          surface: Colors.white,
-          background: const Color(0xFFF8F9FA),
-        ),
-        fontFamily: 'Inter', // Modern font
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: Colors.grey.shade100, width: 1),
-          ),
-          clipBehavior: Clip.antiAlias,
-        ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          foregroundColor: Color(0xFF1A1C1E),
-          titleTextStyle: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF1A1C1E),
-            letterSpacing: -0.5,
-          ),
-          iconTheme: IconThemeData(color: Color(0xFF1A1C1E)),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 8,
-            shadowColor: const Color(0xFF2E7D32).withOpacity(0.3),
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            backgroundColor: const Color(0xFF2E7D32),
-            foregroundColor: Colors.white,
-            textStyle: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          hintStyle: TextStyle(
-              color: Colors.grey.shade400, fontWeight: FontWeight.w500),
-        ),
-      ),
+      theme: AppTheme.lightWithSeed(seed),
+      darkTheme: AppTheme.darkWithSeed(seed),
+      themeMode: tm,
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const AuthWrapper(),
       routes: {
         '/forgot-password': (context) => const ForgotPasswordScreen(),
@@ -135,6 +91,7 @@ class MyApp extends StatelessWidget {
           return ResetPasswordScreen(email: email);
         },
         '/orders': (context) => const RetailerOrdersScreen(),
+        '/settings': (context) => const UserSettingsScreen(),
         '/offers': (context) {
           final args = ModalRoute.of(context)!.settings.arguments;
           String? offerType;
@@ -149,6 +106,8 @@ class MyApp extends StatelessWidget {
         '/dashboard/wholesaler': (context) => const WholesalerDashboard(),
         '/dashboard/admin': (context) => const AdminDashboard(),
         '/dashboard/staff': (context) => const StaffDashboard(),
+        '/admin/ai-training': (context) => const AdminAITrainingReportScreen(),
+        '/thank-you': (context) => const ThankYouScreen(),
       },
     );
   }
@@ -165,12 +124,23 @@ class AuthWrapper extends StatelessWidget {
       return const AuthHomeScreen();
     }
 
+    if (authProvider.user!.status == 'PENDING') {
+      return const PendingApprovalScreen();
+    }
+
     // Initialize notifications
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final np = Provider.of<NotificationProvider>(context, listen: false);
       if (!np.isConnected) {
         np.init(authProvider.user!.roles.first, userId: authProvider.user!.id);
       }
+      showBatteryOptimizationPromptIfNeeded(context);
+      // Ensure topic subscription for all roles and identity remembered for token refresh
+      NotificationService.subscribeToTopicsForRoles(authProvider.user!.roles);
+      NotificationService.rememberIdentity(
+        authProvider.user!.roles.join(','),
+        userId: authProvider.user!.id,
+      );
     });
 
     if (authProvider.user!.roles.contains(Constants.roleRetailer)) {

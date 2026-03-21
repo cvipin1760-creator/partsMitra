@@ -23,6 +23,10 @@ class WebSocketService {
     _client = StompClient(
       config: StompConfig(
         url: wsUrl,
+        stompConnectHeaders: const {
+          // request heartbeats: 10s outgoing, 10s incoming
+          'heart-beat': '10000,10000',
+        },
         onConnect: (frame) {
           if (kDebugMode) {
             debugPrint('WebSocket Connected: ${frame.headers}');

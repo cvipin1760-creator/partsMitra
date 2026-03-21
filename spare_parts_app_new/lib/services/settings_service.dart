@@ -8,6 +8,11 @@ class SettingsService {
   static const _aiChatbotKey = 'ai_chatbot_enabled';
   static const _websocketKey = 'websocket_enabled';
   static const _forceLocalOtpKey = 'force_local_otp';
+  static const _themeModeKey = 'theme_mode'; // system | light | dark
+  static const _themeSeedKey = 'theme_seed_color'; // int value
+  static const _textScaleKey = 'text_scale'; // double
+  static const _animationSpeedKey = 'animation_speed'; // double multiplier
+  static const _batteryPromptKey = 'battery_prompt_shown';
 
   static Future<SharedPreferences> _prefs() async =>
       await SharedPreferences.getInstance();
@@ -50,6 +55,56 @@ class SettingsService {
   static Future<void> setForceLocalOtp(bool v) async {
     final p = await _prefs();
     await p.setBool(_forceLocalOtpKey, v);
+  }
+
+  static Future<String> getThemeMode() async {
+    final p = await _prefs();
+    return p.getString(_themeModeKey) ?? 'system';
+  }
+
+  static Future<void> setThemeMode(String mode) async {
+    final p = await _prefs();
+    await p.setString(_themeModeKey, mode);
+  }
+
+  static Future<int?> getThemeSeedColor() async {
+    final p = await _prefs();
+    return p.getInt(_themeSeedKey);
+  }
+
+  static Future<void> setThemeSeedColor(int value) async {
+    final p = await _prefs();
+    await p.setInt(_themeSeedKey, value);
+  }
+
+  static Future<double> getTextScale() async {
+    final p = await _prefs();
+    return p.getDouble(_textScaleKey) ?? 1.0;
+  }
+
+  static Future<void> setTextScale(double v) async {
+    final p = await _prefs();
+    await p.setDouble(_textScaleKey, v);
+  }
+
+  static Future<double> getAnimationSpeed() async {
+    final p = await _prefs();
+    return p.getDouble(_animationSpeedKey) ?? 1.0;
+  }
+
+  static Future<void> setAnimationSpeed(double v) async {
+    final p = await _prefs();
+    await p.setDouble(_animationSpeedKey, v);
+  }
+
+  static Future<bool> isBatteryPromptShown() async {
+    final p = await _prefs();
+    return p.getBool(_batteryPromptKey) ?? false;
+  }
+
+  static Future<void> setBatteryPromptShown(bool v) async {
+    final p = await _prefs();
+    await p.setBool(_batteryPromptKey, v);
   }
 
   static Future<Map<String, String>> getRemoteSettings() async {

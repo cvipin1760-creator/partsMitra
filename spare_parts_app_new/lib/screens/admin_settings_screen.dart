@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/settings_service.dart';
+import '../widgets/section_header.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -15,6 +18,14 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   bool _notifInApp = true;
   bool _notifWhatsApp = false;
   bool _loaded = false;
+  late ThemeProvider _themeProvider;
+  final List<Color> _colorChoices = const [
+    Color(0xFF2E7D32), // Emerald
+    Color(0xFF1565C0), // Royal Blue
+    Color(0xFFFFB300), // Amber
+    Color(0xFF7E57C2), // Purple
+    Color(0xFFD32F2F), // Red
+  ];
 
   @override
   void initState() {
@@ -23,6 +34,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   }
 
   Future<void> _load() async {
+    // Theme is managed by ThemeProvider; no need to read here
     final v = await SettingsService.isVoiceTrainingEnabled();
     final a = await SettingsService.isAiChatbotEnabled();
     final w = await SettingsService.isWebSocketEnabled();
@@ -59,6 +71,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _themeProvider = Provider.of<ThemeProvider>(context);
+    final currentTheme = _themeProvider.themeMode;
+    final currentSeed = _themeProvider.seedColor;
+    final textScale = _themeProvider.textScale;
+    final animationSpeed = _themeProvider.animationSpeed;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Settings'),
@@ -68,14 +85,101 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text(
-                  'Local App Settings',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                const SectionHeader(
+                    title: 'Appearance',
+                    subtitle: 'Customize app look and feel'),
+                const SizedBox(height: 8),
+                SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                        value: ThemeMode.system,
+                        icon: Icon(Icons.brightness_auto),
+                        label: Text('System')),
+                    ButtonSegment(
+                        value: ThemeMode.light,
+                        icon: Icon(Icons.light_mode),
+                        label: Text('Light')),
+                    ButtonSegment(
+                        value: ThemeMode.dark,
+                        icon: Icon(Icons.dark_mode),
+                        label: Text('Dark')),
+                  ],
+                  selected: {currentTheme},
+                  onSelectionChanged: (sel) {
+                    final mode = sel.first;
+                    _themeProvider.setThemeMode(mode);
+                  },
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
+                const SizedBox(height: 12),
+                Text('Primary Color',
+                    style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _colorChoices.map((c) {
+                    final selected = c.value == currentSeed.value;
+                    return GestureDetector(
+                      onTap: () => _themeProvider.setSeedColor(c),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected ? Colors.black : Colors.black12,
+                            width: selected ? 2 : 1,
+                          ),
+                        ),
+                        child: selected
+                            ? const Icon(Icons.check,
+                                color: Colors.white, size: 20)
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Text('Text Size',
+                    style: Theme.of(context).textTheme.labelLarge),
+                Slider(
+                  value: textScale,
+                  min: 0.8,
+                  max: 1.4,
+                  divisions: 6,
+                  label: '${textScale.toStringAsFixed(2)}x',
+                  onChanged: (v) => _themeProvider.setTextScale(v),
+                ),
+                const SizedBox(height: 8),
+                Text('Animation Speed',
+                    style: Theme.of(context).textTheme.labelLarge),
+                Slider(
+                  value: animationSpeed,
+                  min: 0.5,
+                  max: 2.0,
+                  divisions: 6,
+                  label: '${animationSpeed.toStringAsFixed(2)}x',
+                  onChanged: (v) => _themeProvider.setAnimationSpeed(v),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.analytics_outlined),
+                  title: const Text('AI Training Report'),
+                  subtitle:
+                      const Text('Review samples and export CSV for analysis'),
+                  onTap: () =>
+                      Navigator.of(context).pushNamed('/admin/ai-training'),
+                ),
+                const Divider(),
+                const SectionHeader(
+                    title: 'Local App Settings',
+                    subtitle: 'These apply to this device only'),
                 SwitchListTile(
                   title: const Text('Enable Voice Training'),
-                  subtitle:
-                      const Text('Use corrections to improve voice searches'),
                   value: _voice,
                   onChanged: (v) => setState(() => _voice = v),
                 ),
@@ -95,10 +199,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   onChanged: (v) => setState(() => _localOtp = v),
                 ),
                 const Divider(),
-                const Text(
-                  'Global Notification Settings',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+                const SectionHeader(
+                    title: 'Global Notification Settings',
+                    subtitle: 'Affects all users'),
                 SwitchListTile(
                   title: const Text('In-App Notifications'),
                   subtitle: const Text('Notify users when new products launch'),

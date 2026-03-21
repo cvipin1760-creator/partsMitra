@@ -11,6 +11,8 @@ import '../widgets/ai_chatbot_widget.dart';
 import '../services/settings_service.dart';
 import '../widgets/cart_badge.dart';
 import '../widgets/notification_badge.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 class RetailerDashboard extends StatefulWidget {
   const RetailerDashboard({super.key});
@@ -24,13 +26,22 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
   String? _incomingOfferType;
   bool _bannerShown = false;
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    WholesalerShopScreen(),
-    OffersScreen(),
-    Center(child: Text('My Inventory', style: TextStyle(fontSize: 24))),
-    RetailerOrdersScreen(),
-    ProfileScreen(),
-  ];
+  Widget _buildPage(int index) {
+    switch (index) {
+      case 0:
+        return const WholesalerShopScreen();
+      case 1:
+        return const OffersScreen();
+      case 2:
+        return const Center(
+            child: Text('My Inventory', style: TextStyle(fontSize: 24)));
+      case 3:
+        return const RetailerOrdersScreen();
+      case 4:
+      default:
+        return const ProfileScreen();
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -147,6 +158,24 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
             ],
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => Navigator.of(context).pushNamed('/settings'),
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.brightness_6_outlined),
+              onSelected: (val) {
+                final tp = Provider.of<ThemeProvider>(context, listen: false);
+                if (val == 'system') tp.setThemeMode(ThemeMode.system);
+                if (val == 'light') tp.setThemeMode(ThemeMode.light);
+                if (val == 'dark') tp.setThemeMode(ThemeMode.dark);
+              },
+              itemBuilder: (ctx) => const [
+                PopupMenuItem(value: 'system', child: Text('System Theme')),
+                PopupMenuItem(value: 'light', child: Text('Light Theme')),
+                PopupMenuItem(value: 'dark', child: Text('Dark Theme')),
+              ],
+            ),
             const CartBadge(),
             const NotificationBadge(),
             const SizedBox(width: 8),
@@ -158,7 +187,7 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
             final ai = snap.data ?? true;
             return Stack(
               children: [
-                _widgetOptions.elementAt(_selectedIndex),
+                _buildPage(_selectedIndex),
                 if (ai) const AIChatbotWidget(),
               ],
             );

@@ -38,6 +38,7 @@ class AuthProvider with ChangeNotifier {
       final token = await NotificationService.getToken();
       if (token != null) {
         await NotificationService.updateTokenOnServer(_user!.id, token);
+        await NotificationService.attemptPendingFcmSync(userId: _user!.id);
       }
     }
   }

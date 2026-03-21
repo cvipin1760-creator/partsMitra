@@ -1488,25 +1488,7 @@ class _WholesalerShopScreenState extends State<WholesalerShopScreen> {
                                 _showRequestDialog();
                               },
                             ),
-                            const Divider(),
-                            ListTile(
-                              leading: const Icon(Icons.file_upload,
-                                  color: Colors.blue),
-                              title: const Text('Bulk Import (Excel)'),
-                              onTap: () {
-                                Navigator.pop(ctx);
-                                _importExcel();
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.file_download,
-                                  color: Colors.green),
-                              title: const Text('Bulk Export (Excel)'),
-                              onTap: () {
-                                Navigator.pop(ctx);
-                                _exportExcel();
-                              },
-                            ),
+                            // Bulk Import/Export removed for mechanics and general users
                           ],
                         ),
                       ),

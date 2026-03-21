@@ -32,6 +32,7 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
   final AITrainingService _trainingService = AITrainingService();
   final ImagePicker _picker = ImagePicker();
   List<Product> _matches = [];
+  String? _lastUserPrompt;
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -53,6 +54,7 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
       _messages.add({'text': text, 'isBot': false});
       _controller.clear();
       _isLoading = true;
+      _lastUserPrompt = text;
     });
     _scrollToBottom();
 
@@ -557,6 +559,14 @@ class _AIChatbotWidgetState extends State<AIChatbotWidget> {
                                               Provider.of<CartProvider>(ctx,
                                                   listen: false);
                                           cart.addItem(p, displayPrice);
+                                          try {
+                                            _trainingService.submitVoiceAdd(
+                                              query: _lastUserPrompt ?? 'chat',
+                                              productId: p.id,
+                                              productName: p.name,
+                                              price: displayPrice,
+                                            );
+                                          } catch (_) {}
                                         },
                                         child: const Text('ADD'),
                                       );

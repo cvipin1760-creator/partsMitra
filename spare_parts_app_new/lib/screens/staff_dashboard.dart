@@ -10,8 +10,9 @@ import '../models/order.dart';
 import '../utils/image_utils.dart';
 import '../utils/constants.dart';
 import 'profile_screen.dart';
-import 'offers_screen.dart';
 import '../widgets/notification_badge.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 class StaffDashboard extends StatefulWidget {
   const StaffDashboard({super.key});
@@ -25,11 +26,15 @@ class _StaffDashboardState extends State<StaffDashboard> {
   String? _incomingOfferType;
   bool _bannerShown = false;
 
-  final List<Widget> _widgetOptions = [
-    const StaffOrdersScreen(),
-    const OffersScreen(),
-    const ProfileScreen(),
-  ];
+  Widget _buildPage(int index) {
+    switch (index) {
+      case 0:
+        return const StaffOrdersScreen();
+      case 1:
+      default:
+        return const ProfileScreen();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,12 +135,30 @@ class _StaffDashboardState extends State<StaffDashboard> {
           backgroundColor: Colors.blueGrey,
           foregroundColor: Colors.white,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => Navigator.of(context).pushNamed('/settings'),
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.brightness_6_outlined),
+              onSelected: (val) {
+                final tp = Provider.of<ThemeProvider>(context, listen: false);
+                if (val == 'system') tp.setThemeMode(ThemeMode.system);
+                if (val == 'light') tp.setThemeMode(ThemeMode.light);
+                if (val == 'dark') tp.setThemeMode(ThemeMode.dark);
+              },
+              itemBuilder: (ctx) => const [
+                PopupMenuItem(value: 'system', child: Text('System Theme')),
+                PopupMenuItem(value: 'light', child: Text('Light Theme')),
+                PopupMenuItem(value: 'dark', child: Text('Dark Theme')),
+              ],
+            ),
             const NotificationBadge(),
             IconButton(
                 icon: const Icon(Icons.logout), onPressed: () => auth.logout()),
           ],
         ),
-        body: _widgetOptions[_selectedIndex],
+        body: _buildPage(_selectedIndex),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) =>
@@ -145,11 +168,6 @@ class _StaffDashboardState extends State<StaffDashboard> {
               icon: Icon(Icons.delivery_dining_outlined),
               selectedIcon: Icon(Icons.delivery_dining),
               label: 'Deliveries',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.local_offer_outlined),
-              selectedIcon: Icon(Icons.local_offer),
-              label: 'Offers',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),

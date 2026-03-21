@@ -45,6 +45,8 @@ import 'offers_screen.dart';
 import '../services/settings_service.dart';
 import '../widgets/cart_badge.dart';
 import '../widgets/notification_badge.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -358,6 +360,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
           actions: [
             const CartBadge(),
             const NotificationBadge(),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.brightness_6_outlined),
+              onSelected: (val) {
+                final tp = Provider.of<ThemeProvider>(context, listen: false);
+                if (val == 'system') tp.setThemeMode(ThemeMode.system);
+                if (val == 'light') tp.setThemeMode(ThemeMode.light);
+                if (val == 'dark') tp.setThemeMode(ThemeMode.dark);
+              },
+              itemBuilder: (ctx) => const [
+                PopupMenuItem(value: 'system', child: Text('System Theme')),
+                PopupMenuItem(value: 'light', child: Text('Light Theme')),
+                PopupMenuItem(value: 'dark', child: Text('Dark Theme')),
+              ],
+            ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () {

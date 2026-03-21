@@ -225,61 +225,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                                   setState(
                                                       () => _isLoading = false);
                                                 }
-                                                await showDialog(
-                                                  context: context,
-                                                  barrierDismissible: false,
-                                                  builder: (ctx) => AlertDialog(
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        20)),
-                                                    title: const Row(
-                                                      children: [
-                                                        Icon(Icons.check_circle,
-                                                            color:
-                                                                Colors.green),
-                                                        SizedBox(width: 10),
-                                                        Text('Completed'),
-                                                      ],
-                                                    ),
-                                                    content: const Text(
-                                                        'Registration completed successfully! Please login to continue.'),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () {
-                                                          Navigator.of(ctx)
-                                                              .pop();
-                                                          // Use pushReplacement to ensure the stack is clean but smooth
-                                                          Navigator.of(context)
-                                                              .pushNamedAndRemoveUntil(
-                                                                  '/',
-                                                                  (route) =>
-                                                                      false);
-                                                        },
-                                                        child: const Text('OK'),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
+                                                if (mounted) {
+                                                  Navigator.of(context)
+                                                      .pushNamedAndRemoveUntil(
+                                                          '/thank-you',
+                                                          (route) => false);
+                                                }
                                               } else {
                                                 _showFeedback(
                                                     'Registration failed. Please try again.',
                                                     isError: true);
                                               }
                                             } else {
-                                              // Standalone verification
-                                              final success =
-                                                  await authProvider.verifyOtp(
-                                                _otpController.text,
-                                              );
-                                              if (success) {
-                                                _showFeedback(
-                                                    'OTP verified successfully!');
-                                                Navigator.of(context).pop(true);
+                                              // Registration flow expects OTP string result
+                                              final otpValue =
+                                                  _otpController.text;
+                                              if (otpValue.length == 6) {
+                                                if (mounted) {
+                                                  setState(
+                                                      () => _isLoading = false);
+                                                  WidgetsBinding.instance
+                                                      .addPostFrameCallback(
+                                                          (_) {
+                                                    Navigator.of(context)
+                                                        .pop(otpValue);
+                                                  });
+                                                }
                                               } else {
-                                                _showFeedback('Invalid OTP',
+                                                _showFeedback(
+                                                    'OTP must be 6 digits',
                                                     isError: true);
                                               }
                                             }
@@ -384,7 +358,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         style: TextStyle(color: Colors.white),
                       ),
                       TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          if (Navigator.canPop(context)) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              Navigator.of(context).pop();
+                            });
+                          }
+                        },
                         child: const Text(
                           'Go Back',
                           style: TextStyle(

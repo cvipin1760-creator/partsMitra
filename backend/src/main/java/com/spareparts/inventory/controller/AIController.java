@@ -3,6 +3,8 @@ package com.spareparts.inventory.controller;
 import com.spareparts.inventory.service.AIService;
 import com.spareparts.inventory.service.OrderService;
 import com.spareparts.inventory.repository.ProductRepository;
+import com.spareparts.inventory.repository.VoiceTrainingSampleRepository;
+import com.spareparts.inventory.entity.VoiceTrainingSample;
 import com.spareparts.inventory.dto.OrderRequest;
 import com.spareparts.inventory.dto.OrderItemDto;
 import com.spareparts.inventory.entity.Product;
@@ -28,6 +30,8 @@ public class AIController {
     private OrderService orderService;
     @Autowired
     private ProductRepository productRepository;
+    @Autowired
+    private VoiceTrainingSampleRepository voiceTrainingSampleRepository;
 
     @PostMapping("/chat")
     @PreAuthorize("isAuthenticated()")
@@ -69,6 +73,42 @@ public class AIController {
         // Similar to feedback, record corrections for manual model fine-tuning
         System.out.println("AI Training Correction Received: " + request);
         return ResponseEntity.ok(Map.of("message", "Correction recorded for training"));
+    }
+
+    @PostMapping("/voice/train")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> trainVoice(@RequestBody Map<String, Object> request,
+                                        Authentication authentication) {
+        try {
+            String query = request.get("query") != null ? request.get("query").toString() : null;
+            Long productId = null;
+            if (request.get("productId") instanceof Number) {
+                productId = ((Number) request.get("productId")).longValue();
+            } else if (request.get("productId") != null) {
+                productId = Long.parseLong(request.get("productId").toString());
+            }
+            String productName = request.get("productName") != null ? request.get("productName").toString() : null;
+            Double price = null;
+            if (request.get("price") instanceof Number) {
+                price = ((Number) request.get("price")).doubleValue();
+            } else if (request.get("price") != null) {
+                price = Double.parseDouble(request.get("price").toString());
+            }
+
+            VoiceTrainingSample sample = new VoiceTrainingSample();
+            sample.setQuery(query);
+            sample.setProductId(productId);
+            sample.setProductName(productName);
+            sample.setPrice(price);
+            if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl u) {
+                sample.setUserId(u.getId());
+                sample.setRole(u.getAuthorities().stream().findFirst().map(a -> a.getAuthority()).orElse(null));
+            }
+            voiceTrainingSampleRepository.save(sample);
+            return ResponseEntity.ok(Map.of("message", "Recorded"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/order")

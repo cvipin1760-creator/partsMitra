@@ -40,4 +40,24 @@ class AITrainingService {
       print('Local correction recorded: $prompt -> $correctedResponse');
     }
   }
+
+  /// Records a voice-driven add-to-cart event to improve voice intent mapping
+  Future<void> submitVoiceAdd({
+    required String query,
+    required int productId,
+    required String productName,
+    required double price,
+  }) async {
+    if (Constants.useRemote) {
+      await _remote.postJson('/ai/voice/train', {
+        'query': query,
+        'productId': productId,
+        'productName': productName,
+        'price': price,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    } else {
+      print('Voice add recorded: "$query" -> $productName (#$productId) ₹$price');
+    }
+  }
 }
