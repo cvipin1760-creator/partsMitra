@@ -338,6 +338,7 @@ public class AdminController {
     }
 
     @PutMapping("/orders/{orderId}/items")
+    @PreAuthorize("hasRole('SUPER_MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<OrderDto> updateOrderItems(@PathVariable Long orderId, @RequestBody List<OrderItemDto> items) {
         return ResponseEntity.ok(orderService.updateOrderItems(orderId, items));
     }

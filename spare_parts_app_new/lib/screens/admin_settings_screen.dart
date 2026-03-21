@@ -17,6 +17,30 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   bool _localOtp = false;
   bool _notifInApp = true;
   bool _notifWhatsApp = false;
+
+  // New Global Settings
+  bool _wsGlobal = true;
+  bool _localOtpGlobal = false;
+  final TextEditingController _logoUrlController = TextEditingController();
+  final TextEditingController _serverHostController = TextEditingController();
+  final TextEditingController _googleClientIdController =
+      TextEditingController();
+  final TextEditingController _resetPasswordPathController =
+      TextEditingController();
+  final TextEditingController _altResetPasswordPathController =
+      TextEditingController();
+  final TextEditingController _changePasswordPathController =
+      TextEditingController();
+  final TextEditingController _otpLoginPathController = TextEditingController();
+  final TextEditingController _locationIdPathController =
+      TextEditingController();
+  final TextEditingController _locationBodyPathController =
+      TextEditingController();
+  final TextEditingController _loyaltyPercentController =
+      TextEditingController();
+  final TextEditingController _minRedeemPointsController =
+      TextEditingController();
+
   bool _loaded = false;
   late ThemeProvider _themeProvider;
   final List<Color> _colorChoices = const [
@@ -33,6 +57,22 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _logoUrlController.dispose();
+    _serverHostController.dispose();
+    _googleClientIdController.dispose();
+    _resetPasswordPathController.dispose();
+    _altResetPasswordPathController.dispose();
+    _changePasswordPathController.dispose();
+    _otpLoginPathController.dispose();
+    _locationIdPathController.dispose();
+    _locationBodyPathController.dispose();
+    _loyaltyPercentController.dispose();
+    _minRedeemPointsController.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     // Theme is managed by ThemeProvider; no need to read here
     final v = await SettingsService.isVoiceTrainingEnabled();
@@ -46,8 +86,32 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         _ai = a;
         _ws = w;
         _localOtp = o;
+
         _notifInApp = remote['NOTIF_IN_APP_ENABLED'] == 'true';
         _notifWhatsApp = remote['NOTIF_WHATSAPP_ENABLED'] == 'true';
+
+        // Load Global Settings
+        _wsGlobal = (remote['WS_ENABLED'] ?? 'true') == 'true';
+        _localOtpGlobal = (remote['FORCE_LOCAL_OTP'] ?? 'false') == 'true';
+        _logoUrlController.text = remote['LOGO_URL'] ?? '';
+        _serverHostController.text =
+            remote['SERVER_HOST'] ?? 'sparehub-0t47.onrender.com';
+        _googleClientIdController.text = remote['GOOGLE_CLIENT_ID'] ?? '';
+        _resetPasswordPathController.text =
+            remote['RESET_PASSWORD_PATH'] ?? '/auth/reset-password';
+        _altResetPasswordPathController.text =
+            remote['ALT_RESET_PASSWORD_PATH'] ?? '/auth/password/reset';
+        _changePasswordPathController.text =
+            remote['CHANGE_PASSWORD_PATH'] ?? '/auth/change-password';
+        _otpLoginPathController.text =
+            remote['OTP_LOGIN_PATH'] ?? '/auth/otp-login';
+        _locationIdPathController.text =
+            remote['LOCATION_ID_PATH'] ?? '/admin/users/{id}/location';
+        _locationBodyPathController.text =
+            remote['LOCATION_BODY_PATH'] ?? '/admin/users/update-location';
+        _loyaltyPercentController.text = remote['LOYALTY_PERCENT'] ?? '1';
+        _minRedeemPointsController.text = remote['MIN_REDEEM_POINTS'] ?? '0';
+
         _loaded = true;
       });
     }
@@ -58,10 +122,30 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     await SettingsService.setAiChatbotEnabled(_ai);
     await SettingsService.setWebSocketEnabled(_ws);
     await SettingsService.setForceLocalOtp(_localOtp);
-    await SettingsService.saveRemoteSetting(
-        'NOTIF_IN_APP_ENABLED', _notifInApp ? 'true' : 'false');
-    await SettingsService.saveRemoteSetting(
-        'NOTIF_WHATSAPP_ENABLED', _notifWhatsApp ? 'true' : 'false');
+
+    // Save Remote Settings
+    final remoteMap = {
+      'NOTIF_IN_APP_ENABLED': _notifInApp ? 'true' : 'false',
+      'NOTIF_WHATSAPP_ENABLED': _notifWhatsApp ? 'true' : 'false',
+      'WS_ENABLED': _wsGlobal ? 'true' : 'false',
+      'FORCE_LOCAL_OTP': _localOtpGlobal ? 'true' : 'false',
+      'LOGO_URL': _logoUrlController.text,
+      'SERVER_HOST': _serverHostController.text,
+      'GOOGLE_CLIENT_ID': _googleClientIdController.text,
+      'RESET_PASSWORD_PATH': _resetPasswordPathController.text,
+      'ALT_RESET_PASSWORD_PATH': _altResetPasswordPathController.text,
+      'CHANGE_PASSWORD_PATH': _changePasswordPathController.text,
+      'OTP_LOGIN_PATH': _otpLoginPathController.text,
+      'LOCATION_ID_PATH': _locationIdPathController.text,
+      'LOCATION_BODY_PATH': _locationBodyPathController.text,
+      'LOYALTY_PERCENT': _loyaltyPercentController.text,
+      'MIN_REDEEM_POINTS': _minRedeemPointsController.text,
+    };
+
+    for (var entry in remoteMap.entries) {
+      await SettingsService.saveRemoteSetting(entry.key, entry.value);
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Settings saved')),
@@ -200,6 +284,62 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 ),
                 const Divider(),
                 const SectionHeader(
+                    title: 'Global System Settings',
+                    subtitle: 'Affects all devices (Stored on Server)'),
+                SwitchListTile(
+                  title: const Text('Global WebSocket'),
+                  subtitle: const Text('Enable/Disable WS for all clients'),
+                  value: _wsGlobal,
+                  onChanged: (v) => setState(() => _wsGlobal = v),
+                ),
+                SwitchListTile(
+                  title: const Text('Global Force Local OTP'),
+                  subtitle: const Text('Force local OTP for all clients'),
+                  value: _localOtpGlobal,
+                  onChanged: (v) => setState(() => _localOtpGlobal = v),
+                ),
+                _buildTextField(
+                    'Logo URL', _logoUrlController, 'URL for the app logo'),
+                _buildTextField('Server Host', _serverHostController,
+                    'Backend API host (e.g. example.com)'),
+                _buildTextField('Google Client ID', _googleClientIdController,
+                    'Google OAuth Client ID'),
+                const Divider(),
+                const SectionHeader(
+                    title: 'Loyalty & Points',
+                    subtitle: 'Manage reward system'),
+                _buildTextField('Loyalty Percent', _loyaltyPercentController,
+                    'Percentage of order amount given as points',
+                    keyboardType: TextInputType.number),
+                _buildTextField('Min Redeem Points', _minRedeemPointsController,
+                    'Minimum points required to redeem',
+                    keyboardType: TextInputType.number),
+                const Divider(),
+                const SectionHeader(
+                    title: 'API Path Configuration',
+                    subtitle: 'Advanced path overrides'),
+                _buildTextField(
+                    'Reset Password Path',
+                    _resetPasswordPathController,
+                    'Default: /auth/reset-password'),
+                _buildTextField(
+                    'Alt Reset Password Path',
+                    _altResetPasswordPathController,
+                    'Default: /auth/password/reset'),
+                _buildTextField(
+                    'Change Password Path',
+                    _changePasswordPathController,
+                    'Default: /auth/change-password'),
+                _buildTextField('OTP Login Path', _otpLoginPathController,
+                    'Default: /auth/otp-login'),
+                _buildTextField('Location ID Path', _locationIdPathController,
+                    'Default: /admin/users/{id}/location'),
+                _buildTextField(
+                    'Location Body Path',
+                    _locationBodyPathController,
+                    'Default: /admin/users/update-location'),
+                const Divider(),
+                const SectionHeader(
                     title: 'Global Notification Settings',
                     subtitle: 'Affects all users'),
                 SwitchListTile(
@@ -217,10 +357,32 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _save,
-                  child: const Text('Save'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  child: const Text('Save All Settings'),
                 ),
+                const SizedBox(height: 32),
               ],
             ),
+    );
+  }
+
+  Widget _buildTextField(
+      String label, TextEditingController controller, String hint,
+      {TextInputType keyboardType = TextInputType.text}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+        keyboardType: keyboardType,
+      ),
     );
   }
 }

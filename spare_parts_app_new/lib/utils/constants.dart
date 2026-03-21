@@ -1,6 +1,10 @@
+import '../services/settings_service.dart';
+
 class Constants {
-  static const String serverHost = 'sparehub-0t47.onrender.com';
-  static const String defaultBase = 'https://$serverHost/api';
+  static String get serverHost => SettingsService.getCachedRemoteSetting(
+      'SERVER_HOST', 'sparehub-0t47.onrender.com');
+
+  static String get defaultBase => 'https://$serverHost/api';
   static const String baseOverride =
       String.fromEnvironment('BASE_URL', defaultValue: '');
   static String get baseUrl {
@@ -48,45 +52,42 @@ class Constants {
   static const bool useRemote = true; // Use remote for Play Store deployment
   static const bool useStandalone =
       false; // Disable standalone mode for real app functionality
-  static const String logoUrl =
-      String.fromEnvironment('LOGO_URL', defaultValue: '');
-  static const String googleClientId =
-      String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
-  static const String wsEnableOverride =
-      String.fromEnvironment('ENABLE_WS', defaultValue: 'true');
-  static bool get enableWebSocket => wsEnableOverride.toLowerCase() == 'true';
-  static const String localOtpOverride =
-      String.fromEnvironment('FORCE_LOCAL_OTP', defaultValue: 'false');
-  static bool get forceLocalOtp => localOtpOverride.toLowerCase() == 'true';
+
+  static String get logoUrl => SettingsService.getCachedRemoteSetting(
+      'LOGO_URL', String.fromEnvironment('LOGO_URL', defaultValue: ''));
+
+  static String get googleClientId => SettingsService.getCachedRemoteSetting(
+      'GOOGLE_CLIENT_ID',
+      String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: ''));
+
+  static bool get enableWebSocket =>
+      SettingsService.getCachedRemoteSetting('WS_ENABLED',
+          String.fromEnvironment('ENABLE_WS', defaultValue: 'true')) ==
+      'true';
+
+  static bool get forceLocalOtp =>
+      SettingsService.getCachedRemoteSetting('FORCE_LOCAL_OTP',
+          String.fromEnvironment('FORCE_LOCAL_OTP', defaultValue: 'false')) ==
+      'true';
 
   // -------------------------
   // Configurable Auth Paths
   // -------------------------
-  static const String resetPasswordPathOverride = String.fromEnvironment(
-      'RESET_PASSWORD_PATH',
-      defaultValue: '/auth/reset-password');
-  static const String altResetPasswordPathOverride = String.fromEnvironment(
-      'ALT_RESET_PASSWORD_PATH',
-      defaultValue: '/auth/password/reset');
-  static const String changePasswordPathOverride = String.fromEnvironment(
-      'CHANGE_PASSWORD_PATH',
-      defaultValue: '/auth/change-password');
-  static const String otpLoginPathOverride =
-      String.fromEnvironment('OTP_LOGIN_PATH', defaultValue: '/auth/otp-login');
+  static String get resetPasswordPath => SettingsService.getCachedRemoteSetting(
+      'RESET_PASSWORD_PATH', '/auth/reset-password');
+  static String get altResetPasswordPath =>
+      SettingsService.getCachedRemoteSetting(
+          'ALT_RESET_PASSWORD_PATH', '/auth/password/reset');
+  static String get changePasswordPath =>
+      SettingsService.getCachedRemoteSetting(
+          'CHANGE_PASSWORD_PATH', '/auth/change-password');
+  static String get otpLoginPath =>
+      SettingsService.getCachedRemoteSetting('OTP_LOGIN_PATH', '/auth/otp-login');
 
-  static String get resetPasswordPath => resetPasswordPathOverride;
-  static String get altResetPasswordPath => altResetPasswordPathOverride;
-  static String get changePasswordPath => changePasswordPathOverride;
-  static String get otpLoginPath => otpLoginPathOverride;
-
-  static const String locationIdPathOverride = String.fromEnvironment(
-      'LOCATION_ID_PATH',
-      defaultValue: '/admin/users/{id}/location');
-  static const String locationBodyPathOverride = String.fromEnvironment(
-      'LOCATION_BODY_PATH',
-      defaultValue: '/admin/users/update-location');
-  static String get locationIdPath => locationIdPathOverride;
-  static String get locationBodyPath => locationBodyPathOverride;
+  static String get locationIdPath => SettingsService.getCachedRemoteSetting(
+      'LOCATION_ID_PATH', '/admin/users/{id}/location');
+  static String get locationBodyPath => SettingsService.getCachedRemoteSetting(
+      'LOCATION_BODY_PATH', '/admin/users/update-location');
 
   static const String roleRetailer = 'ROLE_RETAILER';
   static const String roleMechanic = 'ROLE_MECHANIC';

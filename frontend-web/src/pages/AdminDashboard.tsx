@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api, { API_BASE_URL } from '../services/api';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { Users, ShoppingBag, BarChart2, CheckCircle, XCircle, Plus, Package, UserPlus, Upload, Truck, Trash2, RotateCcw, Settings, Bell, MessageSquare, Search } from 'lucide-react';
+import { Users, ShoppingBag, BarChart2, CheckCircle, XCircle, Plus, Package, UserPlus, Upload, Truck, Trash2, RotateCcw, Settings, Bell, MessageSquare, Search, Star } from 'lucide-react';
 import { ROLE_SUPER_MANAGER, ROLE_ADMIN, ROLE_MECHANIC, ROLE_RETAILER, ROLE_WHOLESALER, ROLE_STAFF } from '../services/constants';
 import AuthService from '../services/auth.service';
 import Skeleton from '../components/Skeleton';
@@ -268,12 +268,9 @@ const AdminDashboard = () => {
     stompClient.debug = () => {}; // Disable debug logs
 
     stompClient.connect({}, () => {
-      stompClient.subscribe('/topic/orders', (message) => {
-        const orderData = JSON.parse(message.body);
-        if (orderData.status === 'PENDING') {
-          playNotification();
-          fetchOrders(); // Refresh list
-        }
+      stompClient.subscribe('/topic/admin/orders', () => {
+        playNotification();
+        fetchOrders();
       });
     }, (error) => {
       console.error('WebSocket error:', error);
@@ -1027,6 +1024,11 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-black text-gray-900">₹{order.totalAmount.toLocaleString()}</div>
+                      {order.pointsRedeemed > 0 && (
+                        <div className="text-[10px] font-black text-amber-600 mt-1">
+                          Redeemed: {order.pointsRedeemed} pts (₹{order.pointsRedeemed})
+                        </div>
+                      )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 text-[10px] font-black tracking-widest uppercase rounded-lg ${
@@ -1591,57 +1593,196 @@ const AdminDashboard = () => {
       )}
 
       {activeTab === 'settings' && (
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-4xl mx-auto space-y-8 pb-20">
           <div className="bg-white rounded-3xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden">
             <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
               <h2 className="text-xl font-black text-gray-900 flex items-center gap-3">
-                <Bell size={24} className="text-primary-600" />
-                Notification Preferences
+                <Settings size={24} className="text-primary-600" />
+                Global System Settings
               </h2>
-              <p className="text-gray-500 text-sm mt-1 font-medium">Choose how users get notified about new products.</p>
+              <p className="text-gray-500 text-sm mt-1 font-medium">Configure core app behavior and external integrations.</p>
             </div>
 
-            <div className="p-8 space-y-6">
-              <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-primary-200 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white rounded-xl shadow-sm text-primary-600 group-hover:scale-110 transition-transform">
-                    <Bell size={24} />
+            <div className="p-8 space-y-8">
+              {/* Toggle Switches Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-primary-200 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white rounded-xl shadow-sm text-primary-600">
+                      <Bell size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">In-App Notifications</h3>
+                      <p className="text-xs text-gray-500 font-medium">Real-time alerts for users.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900">In-App Notifications</h3>
-                    <p className="text-sm text-gray-500 font-medium">Show real-time alerts in the notification bar.</p>
-                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={getSetting('NOTIF_IN_APP_ENABLED', 'true') === 'true'}
+                      onChange={(e) => updateSetting('NOTIF_IN_APP_ENABLED', e.target.checked ? 'true' : 'false')}
+                    />
+                    <div className="w-12 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={getSetting('NOTIF_IN_APP_ENABLED', 'true') === 'true'}
-                    onChange={(e) => updateSetting('NOTIF_IN_APP_ENABLED', e.target.checked ? 'true' : 'false')}
-                  />
-                  <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                </label>
+
+                <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-green-200 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white rounded-xl shadow-sm text-green-600">
+                      <MessageSquare size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">WhatsApp Alerts</h3>
+                      <p className="text-xs text-gray-500 font-medium">Automated WhatsApp messages.</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={getSetting('NOTIF_WHATSAPP_ENABLED', 'false') === 'true'}
+                      onChange={(e) => updateSetting('NOTIF_WHATSAPP_ENABLED', e.target.checked ? 'true' : 'false')}
+                    />
+                    <div className="w-12 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-blue-200 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white rounded-xl shadow-sm text-blue-600">
+                      <RotateCcw size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Global WebSocket</h3>
+                      <p className="text-xs text-gray-500 font-medium">Real-time data sync.</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={getSetting('WS_ENABLED', 'true') === 'true'}
+                      onChange={(e) => updateSetting('WS_ENABLED', e.target.checked ? 'true' : 'false')}
+                    />
+                    <div className="w-12 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-amber-200 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white rounded-xl shadow-sm text-amber-600">
+                      <Truck size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Global Force Local OTP</h3>
+                      <p className="text-xs text-gray-500 font-medium">Bypass SMS gateway.</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={getSetting('FORCE_LOCAL_OTP', 'false') === 'true'}
+                      onChange={(e) => updateSetting('FORCE_LOCAL_OTP', e.target.checked ? 'true' : 'false')}
+                    />
+                    <div className="w-12 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                  </label>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-green-200 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white rounded-xl shadow-sm text-green-600 group-hover:scale-110 transition-transform">
-                    <MessageSquare size={24} />
+              {/* Text Inputs Section */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                    <h3 className="font-bold text-gray-900 mb-2">Loyalty Points Percentage</h3>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={parseInt(getSetting('LOYALTY_PERCENT', '1'))}
+                        onChange={(e) => updateSetting('LOYALTY_PERCENT', e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <span className="text-gray-700 font-bold">%</span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900">WhatsApp Alerts</h3>
-                    <p className="text-sm text-gray-500 font-medium">Send automatic WhatsApp messages to registered users.</p>
+                  <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                    <h3 className="font-bold text-gray-900 mb-2">Minimum Points to Redeem</h3>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min={0}
+                        value={parseInt(getSetting('MIN_REDEEM_POINTS', '0'))}
+                        onChange={(e) => updateSetting('MIN_REDEEM_POINTS', e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <span className="text-gray-700 font-bold">pts</span>
+                    </div>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={getSetting('NOTIF_WHATSAPP_ENABLED', 'false') === 'true'}
-                    onChange={(e) => updateSetting('NOTIF_WHATSAPP_ENABLED', e.target.checked ? 'true' : 'false')}
-                  />
-                  <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                </label>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-2">General App Config</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-500 ml-2">Logo URL</label>
+                      <input
+                        type="text"
+                        placeholder="https://example.com/logo.png"
+                        value={getSetting('LOGO_URL', '')}
+                        onChange={(e) => updateSetting('LOGO_URL', e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-500 ml-2">Server Host</label>
+                      <input
+                        type="text"
+                        placeholder="sparehub-0t47.onrender.com"
+                        value={getSetting('SERVER_HOST', 'sparehub-0t47.onrender.com')}
+                        onChange={(e) => updateSetting('SERVER_HOST', e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-xs font-bold text-gray-500 ml-2">Google Client ID</label>
+                      <input
+                        type="text"
+                        placeholder="Your Google OAuth Client ID"
+                        value={getSetting('GOOGLE_CLIENT_ID', '')}
+                        onChange={(e) => updateSetting('GOOGLE_CLIENT_ID', e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-2">API Path Overrides</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[
+                      { key: 'RESET_PASSWORD_PATH', label: 'Reset Password Path', default: '/auth/reset-password' },
+                      { key: 'ALT_RESET_PASSWORD_PATH', label: 'Alt Reset Password Path', default: '/auth/password/reset' },
+                      { key: 'CHANGE_PASSWORD_PATH', label: 'Change Password Path', default: '/auth/change-password' },
+                      { key: 'OTP_LOGIN_PATH', label: 'OTP Login Path', default: '/auth/otp-login' },
+                      { key: 'LOCATION_ID_PATH', label: 'Location ID Path', default: '/admin/users/{id}/location' },
+                      { key: 'LOCATION_BODY_PATH', label: 'Location Body Path', default: '/admin/users/update-location' },
+                    ].map((path) => (
+                      <div key={path.key} className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 ml-2">{path.label}</label>
+                        <input
+                          type="text"
+                          placeholder={path.default}
+                          value={getSetting(path.key, path.default)}
+                          onChange={(e) => updateSetting(path.key, e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl p-3 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 

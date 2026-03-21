@@ -259,14 +259,9 @@ class NotificationService {
         .toList();
   }
 
-  static Future<List<dynamic>> fetchRemoteHistory(String role,
-      {int? userId}) async {
+  static Future<List<dynamic>> fetchRemoteHistory() async {
     try {
-      String path = "/notifications/my?role=$role";
-      if (userId != null) {
-        path += "&userId=$userId";
-      }
-      final res = await _remote.getJson(path);
+      final res = await _remote.getJson("/notifications/my");
       if (res is List) {
         return res;
       }
@@ -355,7 +350,7 @@ class NotificationService {
   // Compatibility methods for NotificationProvider
   Future<List<Map<String, dynamic>>> getMyNotifications(String role,
       {int? userId}) async {
-    final remote = await fetchRemoteHistory(role, userId: userId);
+    final remote = await fetchRemoteHistory();
     final local = await getLocalHistory();
     return [...remote.map((e) => e as Map<String, dynamic>), ...local];
   }
@@ -421,13 +416,9 @@ class NotificationService {
     );
   }
 
-  Future<int> getUnreadCount(String role, {int? userId}) async {
+  Future<int> getUnreadCount() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final uid = userId ?? prefs.getInt('last_user_id');
-      if (uid == null) return 0;
-      final res = await _remote
-          .getJson("/notifications/unread-count?role=$role&userId=$uid");
+      final res = await _remote.getJson("/notifications/unread-count");
       return (res as num).toInt();
     } catch (e) {
       debugPrint("Failed to get unread count: $e");
@@ -435,12 +426,9 @@ class NotificationService {
     return 0;
   }
 
-  Future<void> markAllAsRead({int? userId}) async {
+  Future<void> markAllAsRead() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final uid = userId ?? prefs.getInt('last_user_id');
-      if (uid == null) return;
-      await _remote.postJson("/notifications/mark-all-read?userId=$uid", {});
+      await _remote.postJson("/notifications/mark-all-read", {});
     } catch (e) {
       debugPrint("Failed to mark all as read: $e");
     }

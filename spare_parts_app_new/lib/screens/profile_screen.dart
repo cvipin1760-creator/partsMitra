@@ -282,6 +282,39 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  if (user != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.stars_rounded,
+                              size: 18, color: Color(0xFFFFA000)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${user.points} points available',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1A1C1E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -347,6 +380,12 @@ class ProfileScreen extends StatelessWidget {
                     user?.address ?? 'No address set',
                     isEditable: true,
                     onEdit: () => _showEditAddressDialog(context, authProvider),
+                  ),
+                  _buildProfileItem(
+                    context,
+                    Icons.stars_rounded,
+                    'LOYALTY POINTS',
+                    user != null ? '${user.points} (₹${user.points})' : '0',
                   ),
                   _buildProfileItem(
                     context,

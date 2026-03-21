@@ -6,7 +6,6 @@ import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 import '../utils/image_utils.dart';
-import '../widgets/notification_badge.dart';
 
 class OffersScreen extends StatefulWidget {
   final String? initialOfferType;
@@ -63,10 +62,6 @@ class _OffersScreenState extends State<OffersScreen>
             style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.orange.shade800,
         foregroundColor: Colors.white,
-        actions: [
-          const NotificationBadge(),
-          const SizedBox(width: 8),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,

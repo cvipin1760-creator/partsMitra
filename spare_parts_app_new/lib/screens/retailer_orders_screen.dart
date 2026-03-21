@@ -1,4 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../services/order_service.dart';
 import '../services/billing_service.dart';
 import '../utils/constants.dart';
+import '../services/websocket_service.dart';
 
 class RetailerOrdersScreen extends StatefulWidget {
   const RetailerOrdersScreen({super.key});
@@ -17,6 +19,7 @@ class RetailerOrdersScreen extends StatefulWidget {
 
 class _RetailerOrdersScreenState extends State<RetailerOrdersScreen> {
   final OrderService _orderService = OrderService();
+  StreamSubscription? _orderSub;
 
   List<Order> _orders = [];
   bool _isLoading = true;
@@ -25,6 +28,10 @@ class _RetailerOrdersScreenState extends State<RetailerOrdersScreen> {
   void initState() {
     super.initState();
     _fetchOrders();
+    _orderSub = WebSocketService.orderUpdates.stream.listen((event) {
+      if (!mounted) return;
+      _fetchOrders();
+    });
   }
 
   Future<void> _fetchOrders() async {
@@ -38,6 +45,12 @@ class _RetailerOrdersScreenState extends State<RetailerOrdersScreen> {
       _orders = orders;
       _isLoading = false;
     });
+  }
+
+  @override
+  void dispose() {
+    _orderSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _generateBill(Order order) async {
@@ -128,6 +141,55 @@ class _RetailerOrdersScreenState extends State<RetailerOrdersScreen> {
                       ),
                       children: [
                         const Divider(height: 1),
+                        if (order.pointsRedeemed > 0)
+                          Container(
+                            margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              border:
+                                  Border.all(color: const Color(0xFFC8E6C9)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'You saved ₹${order.pointsRedeemed} on this order! 🎉',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1B5E20),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Thanks for ordering with SpareHub — smart choice using your points.',
+                                  style: TextStyle(
+                                    color: Color(0xFF2E7D32),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (order.status == 'DELIVERED' &&
+                            (order.pointsEarned) > 0)
+                          Container(
+                            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF8E1),
+                              border: Border.all(color: Color(0xFFFFECB3)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Loyalty bonus: ${order.pointsEarned} points credited for this order.',
+                              style: const TextStyle(
+                                color: Color(0xFF8D6E63),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
                         ...order.items.map(
                           (item) => ListTile(
                             dense: true,

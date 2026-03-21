@@ -26,6 +26,7 @@ import 'screens/thank_you_screen.dart';
 import 'screens/pending_approval_screen.dart';
 
 import 'services/notification_service.dart';
+import 'services/settings_service.dart';
 import 'utils/app_theme.dart';
 
 @pragma('vm:entry-point')
@@ -44,6 +45,7 @@ void main() async {
   } catch (e) {
     debugPrint("Firebase initialization failed: $e");
   }
+  await SettingsService.preloadRemoteSettings();
   await NotificationService.initialize();
   NotificationService.configureNavigationKey(_navigatorKey);
   runApp(

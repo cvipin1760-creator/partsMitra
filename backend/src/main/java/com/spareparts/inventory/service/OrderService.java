@@ -8,6 +8,7 @@ import com.spareparts.inventory.repository.OrderRepository;
 import com.spareparts.inventory.repository.OrderRequestRepository;
 import com.spareparts.inventory.repository.ProductRepository;
 import com.spareparts.inventory.repository.UserRepository;
+import com.spareparts.inventory.repository.SystemSettingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,9 @@ public class OrderService {
     
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private SystemSettingRepository systemSettingRepository;
 
     @Transactional
     public CustomOrderRequestDto createCustomOrderRequest(String text, String photoPath, Long customerId) {
@@ -153,6 +157,18 @@ public class OrderService {
             if (customer.getPoints() < pointsToRedeem) {
                 throw new RuntimeException("Insufficient points to redeem. Available: " + customer.getPoints());
             }
+            long minRedeem = 0L;
+            try {
+                if (systemSettingRepository != null) {
+                    minRedeem = Long.parseLong(systemSettingRepository.getSettingValue("MIN_REDEEM_POINTS", "0"));
+                }
+            } catch (Exception ignored) {}
+            if (minRedeem > 0 && customer.getPoints() < minRedeem) {
+                throw new RuntimeException("Minimum points required to redeem is " + minRedeem);
+            }
+            if (minRedeem > 0 && pointsToRedeem < minRedeem) {
+                throw new RuntimeException("You must redeem at least " + minRedeem + " points");
+            }
             
             // Assume 1 point = 1 unit of currency for simplicity, or apply conversion rate
             BigDecimal pointsValue = BigDecimal.valueOf(pointsToRedeem);
@@ -179,9 +195,16 @@ public class OrderService {
             String title = "New Order #" + order.getId();
             String message = "New order received from " + customer.getName() + " for Rs. " + order.getTotalAmount();
             fcmService.sendToAdminAndSuperManager(title, message, Map.of("orderId", String.valueOf(order.getId()), "route", "orders"));
+            if (order.getPointsRedeemed() != null && order.getPointsRedeemed() > 0) {
+                String redeemMsg = customer.getName() + " redeemed " + order.getPointsRedeemed() + " points (₹" + order.getPointsRedeemed() + ") on Order #" + order.getId();
+                fcmService.sendToAdminAndSuperManager("Points Redeemed", redeemMsg, Map.of("orderId", String.valueOf(order.getId()), "route", "orders"));
+                try {
+                    fcmService.sendOrderStatusToUser(customer.getId(), order.getId(), "You saved ₹" + order.getPointsRedeemed(), "Thanks for ordering with SpareHub! You saved ₹" + order.getPointsRedeemed() + " by redeeming your points.");
+                } catch (Exception ignored) {}
+            }
             
-            // Real-time update for admin dashboard
-            messagingTemplate.convertAndSend("/topic/orders", dto);
+            // Real-time update for admin dashboard - Restricted topic
+            messagingTemplate.convertAndSend("/topic/admin/orders", dto);
         } catch (Exception e) {
             System.err.println("Failed to notify admins of new order: " + e.getMessage());
         }
@@ -304,8 +327,14 @@ public class OrderService {
 
         // Cashback points logic: Award points when order is DELIVERED
         if (status == Order.OrderStatus.DELIVERED && oldStatus != Order.OrderStatus.DELIVERED) {
-            // Calculate cashback: 5% of the total amount (after redemption)
-            BigDecimal cashbackPercentage = new BigDecimal("0.05");
+            // Calculate cashback using configurable percentage (default 1%)
+            BigDecimal cashbackPercentage = new BigDecimal("0.01");
+            try {
+                if (systemSettingRepository != null) {
+                    String percentStr = systemSettingRepository.getSettingValue("LOYALTY_PERCENT", "1");
+                    cashbackPercentage = new BigDecimal(percentStr).divide(new BigDecimal("100"));
+                }
+            } catch (Exception ignored) {}
             BigDecimal cashbackAmount = order.getTotalAmount().multiply(cashbackPercentage);
             long pointsEarned = cashbackAmount.longValue(); // Conversion 1 unit = 1 point
 
@@ -324,13 +353,26 @@ public class OrderService {
         OrderDto dto = convertToDto(order);
         
         try {
-            messagingTemplate.convertAndSend("/topic/orders", dto);
+            // Only Admins/Super Managers see all order updates
+            messagingTemplate.convertAndSend("/topic/admin/orders", dto);
+            // Customer sees their own update
             messagingTemplate.convertAndSendToUser(order.getCustomer().getId().toString(), "/queue/orders", dto);
+            // Seller (Wholesaler) sees their own update
+            if (order.getSeller() != null) {
+                messagingTemplate.convertAndSendToUser(order.getSeller().getId().toString(), "/queue/orders", dto);
+            }
         } catch (Exception ignored) {}
         
         try {
             String title = "Order #" + order.getId() + " " + status.name().replace('_', ' ').toLowerCase();
             fcmService.sendOrderStatusToUser(order.getCustomer().getId(), order.getId(), title, "Your order status is " + status.name());
+        } catch (Exception ignored) {}
+        
+        try {
+            String performerName = order.getDeliveredBy() != null ? order.getDeliveredBy().getName() : "Staff";
+            String adminTitle = "Order #" + order.getId() + " updated";
+            String adminMessage = "Status set to " + status.name() + " by " + performerName;
+            fcmService.sendToAdminAndSuperManager(adminTitle, adminMessage, Map.of("orderId", String.valueOf(order.getId()), "route", "orders"));
         } catch (Exception ignored) {}
         
         return dto;

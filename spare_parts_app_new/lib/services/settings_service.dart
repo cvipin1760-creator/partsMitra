@@ -107,6 +107,16 @@ class SettingsService {
     await p.setBool(_batteryPromptKey, v);
   }
 
+  static Map<String, String> _remoteCache = {};
+
+  static Future<void> preloadRemoteSettings() async {
+    _remoteCache = await getRemoteSettings();
+  }
+
+  static String getCachedRemoteSetting(String key, String defaultValue) {
+    return _remoteCache[key] ?? defaultValue;
+  }
+
   static Future<Map<String, String>> getRemoteSettings() async {
     if (!Constants.useRemote) return {};
     try {

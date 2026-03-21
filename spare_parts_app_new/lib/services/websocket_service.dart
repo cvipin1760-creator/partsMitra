@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
 import '../utils/constants.dart';
 
 class WebSocketService {
   StompClient? _client;
+  static final StreamController<Map<String, dynamic>> orderUpdates =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   void connect(Function(Map<String, dynamic>) onMessageReceived,
       {String? role, int? userId}) {
@@ -54,6 +57,19 @@ class WebSocketService {
                 }
               },
             );
+            // Admin/Super Manager: subscribe to all order updates
+            if (role == 'ROLE_ADMIN' || role == 'ROLE_SUPER_MANAGER') {
+              _client?.subscribe(
+                destination: '/topic/admin/orders',
+                callback: (frame) {
+                  if (frame.body != null) {
+                    final data = jsonDecode(frame.body!);
+                    orderUpdates.add(data);
+                    onMessageReceived({'type': 'ORDER_UPDATE', ...data});
+                  }
+                },
+              );
+            }
           }
 
           // 3. Subscribe to user-specific notifications
@@ -64,6 +80,17 @@ class WebSocketService {
                 if (frame.body != null) {
                   final data = jsonDecode(frame.body!);
                   onMessageReceived(data);
+                }
+              },
+            );
+            // User-specific order updates
+            _client?.subscribe(
+              destination: '/user/$userId/queue/orders',
+              callback: (frame) {
+                if (frame.body != null) {
+                  final data = jsonDecode(frame.body!);
+                  orderUpdates.add(data);
+                  onMessageReceived({'type': 'ORDER_UPDATE', ...data});
                 }
               },
             );

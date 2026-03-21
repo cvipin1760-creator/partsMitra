@@ -4,10 +4,12 @@ import com.spareparts.inventory.entity.Notification;
 import com.spareparts.inventory.entity.User;
 import com.spareparts.inventory.repository.NotificationRepository;
 import com.spareparts.inventory.repository.UserRepository;
+import com.spareparts.inventory.security.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import com.spareparts.inventory.service.FcmService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -29,8 +31,10 @@ public class NotificationController {
 
     @GetMapping("/unread-count")
     public ResponseEntity<Long> getUnreadCount(
-            @RequestParam String role,
-            @RequestParam Long userId) {
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long userId = userDetails.getId();
+        String role = userDetails.getAuthorities().iterator().next().getAuthority();
+        
         User user = userRepository.findById(userId).orElse(null);
         if (user == null || user.getLastNotificationReadAt() == null) {
             return ResponseEntity.ok(notificationRepository.countByUserIdOrTargetRoleOrTargetRole(userId, role, "ALL"));
@@ -39,7 +43,8 @@ public class NotificationController {
     }
 
     @PostMapping("/mark-all-read")
-    public ResponseEntity<?> markAllRead(@RequestParam Long userId) {
+    public ResponseEntity<?> markAllRead(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long userId = userDetails.getId();
         User user = userRepository.findById(userId).orElse(null);
         if (user != null) {
             user.setLastNotificationReadAt(LocalDateTime.now());
@@ -50,12 +55,11 @@ public class NotificationController {
 
     @GetMapping("/my")
     public ResponseEntity<List<Notification>> getMyNotifications(
-            @RequestParam String role,
-            @RequestParam(required = false) Long userId) {
-        if (userId != null) {
-            return ResponseEntity.ok(notificationRepository.findByUserIdOrTargetRoleOrTargetRoleOrderByCreatedAtDesc(userId, role, "ALL"));
-        }
-        return ResponseEntity.ok(notificationRepository.findByTargetRoleOrTargetRoleOrderByCreatedAtDesc(role, "ALL"));
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long userId = userDetails.getId();
+        String role = userDetails.getAuthorities().iterator().next().getAuthority();
+        
+        return ResponseEntity.ok(notificationRepository.findByUserIdOrTargetRoleOrTargetRoleOrderByCreatedAtDesc(userId, role, "ALL"));
     }
 
     @PostMapping("/send/broadcast")

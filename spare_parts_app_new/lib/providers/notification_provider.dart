@@ -81,7 +81,7 @@ class NotificationProvider with ChangeNotifier {
   Future<void> _fetchNotifications(String role, {int? userId}) async {
     final list = await _apiService.getMyNotifications(role, userId: userId);
     _notifications = list;
-    _unreadCount = await _apiService.getUnreadCount(role, userId: userId);
+    _unreadCount = await _apiService.getUnreadCount();
     if (!_initialBannerShown && _notifications.isNotEmpty) {
       final n = _notifications.first;
       final title = (n['title'] ?? '').toString();
@@ -94,8 +94,8 @@ class NotificationProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markAllAsRead({int? userId}) async {
-    await _apiService.markAllAsRead(userId: userId);
+  Future<void> markAllAsRead() async {
+    await _apiService.markAllAsRead();
     _unreadCount = 0;
     notifyListeners();
   }

@@ -23,7 +23,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         Provider.of<NotificationProvider>(context, listen: false)
             .init(role, userId: userId);
         Provider.of<NotificationProvider>(context, listen: false)
-            .markAllAsRead(userId: userId);
+            .markAllAsRead();
       }
     });
   }

@@ -43,6 +43,23 @@ const OrderStatus: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
         <h1 className="text-xl font-bold">Order #{id}</h1>
         <p className="text-gray-500 text-sm mt-1">Live status and tracking</p>
+        {order?.pointsRedeemed > 0 && (
+          <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+            <div className="text-emerald-800 font-black">
+              You saved ₹{order.pointsRedeemed} on this order! 🎉
+            </div>
+            <div className="text-emerald-700 text-sm font-medium mt-1">
+              Thanks for ordering with SpareHub — smart choice using your points.
+            </div>
+          </div>
+        )}
+        {order?.status === 'DELIVERED' && order?.pointsEarned > 0 && (
+          <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+            <div className="text-amber-800 text-sm font-bold">
+              Loyalty bonus: {order.pointsEarned} points credited for this order.
+            </div>
+          </div>
+        )}
       </div>
       {!order ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">{error || 'Order unavailable.'}</div>

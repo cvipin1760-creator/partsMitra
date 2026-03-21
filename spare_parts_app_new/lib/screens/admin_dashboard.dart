@@ -45,6 +45,7 @@ import '../services/settings_service.dart';
 import '../widgets/cart_badge.dart';
 import '../widgets/notification_badge.dart';
 import '../providers/theme_provider.dart';
+import '../services/websocket_service.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -1225,10 +1226,15 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
   bool _isLoading = true;
   final TextEditingController _orderSearchController = TextEditingController();
   String _orderQuery = '';
+  StreamSubscription? _orderWsSub;
   @override
   void initState() {
     super.initState();
     _fetchOrders();
+    _orderWsSub = WebSocketService.orderUpdates.stream.listen((data) {
+      if (!mounted) return;
+      _fetchOrders();
+    });
   }
 
   Future<void> _fetchOrders() async {
@@ -1242,6 +1248,12 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _orderWsSub?.cancel();
+    super.dispose();
   }
 
   void _showRequests() async {

@@ -8,6 +8,7 @@ import { CartProvider } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { initWebPush } from './services/webpush'
+import ErrorBoundary from './components/ErrorBoundary'
 
 (window as any).global = window
 
@@ -34,7 +35,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <LanguageProvider>
         <AuthProvider>
           <CartProvider>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </CartProvider>
         </AuthProvider>
       </LanguageProvider>
