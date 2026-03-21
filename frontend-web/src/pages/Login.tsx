@@ -95,9 +95,14 @@ const Login: React.FC = () => {
       : AuthService.login(email, password);
 
     loginPromise.then(
-      () => {
-        const from = (location.state as any)?.from?.pathname || '/dashboard';
-        navigate(from, { replace: true });
+      (response) => {
+        const user = response?.data || AuthService.getCurrentUser();
+        if (user?.status === 'PENDING') {
+          navigate('/pending-approval', { replace: true });
+        } else {
+          const from = (location.state as any)?.from?.pathname || '/dashboard';
+          navigate(from, { replace: true });
+        }
         window.location.reload();
       },
       (error) => {

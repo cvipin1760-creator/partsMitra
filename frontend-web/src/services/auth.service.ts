@@ -17,7 +17,8 @@ const normalizeRoles = (roles: string[] | undefined) => {
 };
 
 const register = async (name: string, email: string, password: string, role: string, phone: string, countryCode: string, otp: string, address: string) => {
-  console.log('AuthService.register called with:', { name, email, role, phone, otp });
+  const normalizedEmail = email.toLowerCase().trim();
+  console.log('AuthService.register called with:', { name, email: normalizedEmail, role, phone, otp });
   
   // Normalize role for request
   let finalRole = role;
@@ -34,7 +35,7 @@ const register = async (name: string, email: string, password: string, role: str
   try {
     const response = await api.post('/auth/signup', {
       name,
-      email,
+      email: normalizedEmail,
       password,
       role: finalRole,
       phone,
@@ -51,12 +52,13 @@ const register = async (name: string, email: string, password: string, role: str
 };
 
 const sendOtp = (email: string, purpose: string = 'login') => {
-  return api.post('/auth/send-otp', { email, purpose });
+  return api.post('/auth/send-otp', { email: email.toLowerCase().trim(), purpose });
 };
 
 const login = async (email: string, password: string) => {
+  const normalizedEmail = email.toLowerCase().trim();
   const response = await api.post('/auth/signin', {
-    email,
+    email: normalizedEmail,
     password,
   });
   if (response.data.token) {
@@ -67,8 +69,9 @@ const login = async (email: string, password: string) => {
 };
 
 const loginWithOtp = async (email: string, otp: string) => {
+  const normalizedEmail = email.toLowerCase().trim();
   const response = await api.post('/auth/otp-login', {
-    email,
+    email: normalizedEmail,
     otp,
   });
   if (response.data.token) {

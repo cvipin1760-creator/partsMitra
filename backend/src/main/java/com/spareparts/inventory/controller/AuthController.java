@@ -102,6 +102,9 @@ public class AuthController {
         // Generate a 6-digit OTP
         String otp = isDemoMode ? "123456" : String.format("%06d", new java.util.Random().nextInt(999999));
         
+        // Log the generated OTP immediately for troubleshooting
+        System.out.println("GENERATED OTP for " + email + ": " + otp);
+        
         // Skip sending email if in Demo Mode
         if (isDemoMode) {
             OTP_STORAGE.put(email, otp);
@@ -134,6 +137,8 @@ public class AuthController {
             String userMessage = "OTP generated, but email delivery failed. ";
             if (e.getMessage() != null && e.getMessage().contains("Username and Password not accepted")) {
                 userMessage += "Reason: SMTP Authentication failed. Please check Gmail App Password.";
+            } else if (e.getMessage() != null && (e.getMessage().contains("Connect timed out") || e.getMessage().contains("Connection timed out"))) {
+                userMessage += "Reason: Connection to mail server timed out. Please check server network/firewall.";
             } else {
                 userMessage += "Please check server logs or contact support.";
             }
@@ -187,7 +192,8 @@ public class AuthController {
                     user.getAddress(),
                     user.getStatus().name(),
                     user.getLatitude(),
-                    user.getLongitude()));
+                    user.getLongitude(),
+                    user.getPoints()));
 
         } catch (Exception e) {
             return ResponseEntity.status(401).body(new MessageResponse("Authentication failed: " + e.getMessage()));
@@ -234,7 +240,8 @@ public class AuthController {
                 user.getAddress(),
                 user.getStatus().name(),
                 user.getLatitude(),
-                user.getLongitude()));
+                user.getLongitude(),
+                user.getPoints()));
     }
 
     @PostMapping("/signin")
@@ -260,7 +267,8 @@ public class AuthController {
                 user.getAddress(),
                 user.getStatus().name(),
                 user.getLatitude(),
-                user.getLongitude()));
+                user.getLongitude(),
+                user.getPoints()));
     }
 
     @PostMapping("/signup")
@@ -405,6 +413,7 @@ public class AuthController {
                 user.getAddress(),
                 user.getStatus().name(),
                 user.getLatitude(),
-                user.getLongitude()));
+                user.getLongitude(),
+                user.getPoints()));
     }
 }

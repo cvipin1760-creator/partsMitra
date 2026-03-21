@@ -146,10 +146,47 @@ public class OrderService {
         }
 
         order.setTotalAmount(totalAmount);
+
+        // Points logic: Redeem points if requested
+        if (orderRequest.getPointsToRedeem() != null && orderRequest.getPointsToRedeem() > 0) {
+            long pointsToRedeem = orderRequest.getPointsToRedeem();
+            if (customer.getPoints() < pointsToRedeem) {
+                throw new RuntimeException("Insufficient points to redeem. Available: " + customer.getPoints());
+            }
+            
+            // Assume 1 point = 1 unit of currency for simplicity, or apply conversion rate
+            BigDecimal pointsValue = BigDecimal.valueOf(pointsToRedeem);
+            if (pointsValue.compareTo(totalAmount) > 0) {
+                pointsValue = totalAmount; // Cannot redeem more than total amount
+                pointsToRedeem = pointsValue.longValue();
+            }
+            
+            order.setPointsRedeemed(pointsToRedeem);
+            order.setTotalAmount(totalAmount.subtract(pointsValue));
+            
+            // Deduct points from user
+            customer.setPoints(customer.getPoints() - pointsToRedeem);
+            userRepository.save(customer);
+        }
+
         order = orderRepository.save(order);
         System.out.println("Order created successfully with ID: " + order.getId());
 
-        return convertToDto(order);
+        OrderDto dto = convertToDto(order);
+
+        // Notify Admins and Super Managers
+        try {
+            String title = "New Order #" + order.getId();
+            String message = "New order received from " + customer.getName() + " for Rs. " + order.getTotalAmount();
+            fcmService.sendToAdminAndSuperManager(title, message, Map.of("orderId", String.valueOf(order.getId()), "route", "orders"));
+            
+            // Real-time update for admin dashboard
+            messagingTemplate.convertAndSend("/topic/orders", dto);
+        } catch (Exception e) {
+            System.err.println("Failed to notify admins of new order: " + e.getMessage());
+        }
+
+        return dto;
     }
 
     @Transactional
@@ -255,6 +292,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         
+        Order.OrderStatus oldStatus = order.getStatus();
         order.setStatus(status);
         
         // If status is OUT_FOR_DELIVERY or DELIVERED, set the user who performed it as deliveredBy
@@ -263,7 +301,24 @@ public class OrderService {
                     .orElseThrow(() -> new RuntimeException("User not found"));
             order.setDeliveredBy(performer);
         }
-        
+
+        // Cashback points logic: Award points when order is DELIVERED
+        if (status == Order.OrderStatus.DELIVERED && oldStatus != Order.OrderStatus.DELIVERED) {
+            // Calculate cashback: 5% of the total amount (after redemption)
+            BigDecimal cashbackPercentage = new BigDecimal("0.05");
+            BigDecimal cashbackAmount = order.getTotalAmount().multiply(cashbackPercentage);
+            long pointsEarned = cashbackAmount.longValue(); // Conversion 1 unit = 1 point
+
+            if (pointsEarned > 0) {
+                User customer = order.getCustomer();
+                customer.setPoints(customer.getPoints() + pointsEarned);
+                userRepository.save(customer);
+                order.setPointsEarned(pointsEarned);
+                
+                System.out.println("Awarded " + pointsEarned + " points to user " + customer.getId() + " for order " + orderId);
+            }
+        }
+
         order = orderRepository.save(order);
         
         OrderDto dto = convertToDto(order);
@@ -421,6 +476,8 @@ public class OrderService {
         
         dto.setTotalAmount(order.getTotalAmount());
         dto.setStatus(order.getStatus());
+        dto.setPointsRedeemed(order.getPointsRedeemed());
+        dto.setPointsEarned(order.getPointsEarned());
         dto.setCreatedAt(order.getCreatedAt());
 
         dto.setItems(order.getItems().stream().map(item -> {

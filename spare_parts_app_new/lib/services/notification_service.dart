@@ -1,18 +1,21 @@
 import 'dart:convert';
+import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
+import 'remote_client.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   static GlobalKey<NavigatorState>? _navKey;
+  static final RemoteClient _remote = RemoteClient();
 
   static void configureNavigationKey(GlobalKey<NavigatorState> key) {
     _navKey = key;
@@ -259,13 +262,13 @@ class NotificationService {
   static Future<List<dynamic>> fetchRemoteHistory(String role,
       {int? userId}) async {
     try {
-      String url = "${Constants.baseUrl}/notifications/my?role=$role";
+      String path = "/notifications/my?role=$role";
       if (userId != null) {
-        url += "&userId=$userId";
+        path += "&userId=$userId";
       }
-      final res = await http.get(Uri.parse(url));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body);
+      final res = await _remote.getJson(path);
+      if (res is List) {
+        return res;
       }
     } catch (e) {
       debugPrint("Failed to fetch remote history: $e");
@@ -418,12 +421,29 @@ class NotificationService {
     );
   }
 
-  Future<int> getUnreadCount(String role) async {
+  Future<int> getUnreadCount(String role, {int? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final uid = userId ?? prefs.getInt('last_user_id');
+      if (uid == null) return 0;
+      final res = await _remote
+          .getJson("/notifications/unread-count?role=$role&userId=$uid");
+      return (res as num).toInt();
+    } catch (e) {
+      debugPrint("Failed to get unread count: $e");
+    }
     return 0;
   }
 
-  Future<void> markAllAsRead() async {
-    // Placeholder
+  Future<void> markAllAsRead({int? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final uid = userId ?? prefs.getInt('last_user_id');
+      if (uid == null) return;
+      await _remote.postJson("/notifications/mark-all-read?userId=$uid", {});
+    } catch (e) {
+      debugPrint("Failed to mark all as read: $e");
+    }
   }
 
   Future<void> sendNotification(String title, String message, String targetRole,
@@ -433,17 +453,13 @@ class NotificationService {
           ? "/notifications/send/broadcast"
           : "/notifications/send/role/$targetRole";
 
-      await http.post(
-        Uri.parse("${Constants.baseUrl}$endpoint"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "title": title,
-          "message": message,
-          "route": route,
-          if (offerType != null) "offerType": offerType,
-          if (imageUrl != null) "imageUrl": imageUrl,
-        }),
-      );
+      await _remote.postJson(endpoint, {
+        "title": title,
+        "message": message,
+        "route": route,
+        if (offerType != null) "offerType": offerType,
+        if (imageUrl != null) "imageUrl": imageUrl,
+      });
     } catch (e) {
       debugPrint("Failed to send notification: $e");
     }

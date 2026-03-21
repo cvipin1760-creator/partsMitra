@@ -19,6 +19,31 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        User user = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("email", user.getEmail());
+        response.put("name", user.getName());
+        response.put("phone", user.getPhone());
+        response.put("address", user.getAddress());
+        response.put("status", user.getStatus().name());
+        response.put("latitude", user.getLatitude());
+        response.put("longitude", user.getLongitude());
+        response.put("points", user.getPoints());
+        
+        String roleName = "ROLE_MECHANIC";
+        if (user.getRole() != null && user.getRole().getName() != null) {
+            roleName = user.getRole().getName().name();
+        }
+        response.put("roles", List.of(roleName));
+        
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(@AuthenticationPrincipal UserDetailsImpl userDetails,
                                           @RequestBody Map<String, String> body) {
@@ -46,6 +71,7 @@ public class UserController {
         response.put("status", savedUser.getStatus().name());
         response.put("latitude", savedUser.getLatitude());
         response.put("longitude", savedUser.getLongitude());
+        response.put("points", savedUser.getPoints());
         
         String roleName = "ROLE_MECHANIC";
         if (savedUser.getRole() != null && savedUser.getRole().getName() != null) {

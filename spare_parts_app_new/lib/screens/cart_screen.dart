@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/order_service.dart';
 import 'order_confirmation_screen.dart';
 import '../models/order.dart';
@@ -14,23 +15,30 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   bool _isPlacingOrder = false;
+  bool _usePoints = false;
 
   void _placeOrder() async {
     final cart = Provider.of<CartProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     if (cart.items.isEmpty) return;
 
     setState(() => _isPlacingOrder = true);
 
     final orderService = OrderService();
     // Use wholesalerId = 1 as default as seen in other parts of the app
+    final pointsToRedeem = _usePoints ? auth.user?.points ?? 0 : 0;
+
     final success = await orderService.createOrder(
       1,
       cart.items.values.toList(),
+      pointsToRedeem: pointsToRedeem,
     );
 
     setState(() => _isPlacingOrder = false);
 
     if (success != null && mounted) {
+      // Refresh user points
+      auth.refreshUser();
       cart.clear();
       Navigator.pushReplacement(
         context,
@@ -181,6 +189,58 @@ class _CartScreenState extends State<CartScreen> {
                     },
                   ),
                 ),
+                // Points Redemption Section
+                Consumer<AuthProvider>(
+                  builder: (context, auth, child) {
+                    final points = auth.user?.points ?? 0;
+                    if (points <= 0) return const SizedBox.shrink();
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.stars, color: Colors.amber.shade800),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Redeem Points',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                                Text(
+                                  'You have $points points available',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.amber.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _usePoints,
+                            onChanged: (val) {
+                              setState(() => _usePoints = val);
+                            },
+                            activeColor: Colors.amber.shade800,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 SafeArea(
                   top: false,
                   child: Container(
@@ -209,13 +269,39 @@ class _CartScreenState extends State<CartScreen> {
                               style:
                                   TextStyle(fontSize: 13, color: Colors.grey),
                             ),
-                            Text(
-                              'Rs. ${cart.totalAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.redAccent,
-                              ),
+                            Consumer<AuthProvider>(
+                              builder: (context, auth, child) {
+                                final total = cart.totalAmount;
+                                final points =
+                                    _usePoints ? auth.user?.points ?? 0 : 0;
+                                final discountedTotal = total - points;
+                                final finalTotal =
+                                    discountedTotal < 0 ? 0 : discountedTotal;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (_usePoints && points > 0)
+                                      Text(
+                                        'Rs. ${total.toStringAsFixed(2)}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          decoration:
+                                              TextDecoration.lineThrough,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    Text(
+                                      'Rs. ${finalTotal.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.redAccent,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         ),

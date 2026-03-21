@@ -19,6 +19,7 @@ import { ROLE_ADMIN, ROLE_SUPER_MANAGER, ROLE_WHOLESALER, ROLE_STAFF } from './s
 import AIChatbot from './components/AIChatbot';
 import AdminCategories from './pages/AdminCategories';
 import MobileDashboard from './pages/MobileDashboard';
+import PendingApproval from './pages/PendingApproval';
 import { ROLE_MECHANIC, ROLE_RETAILER } from './services/constants';
 
 const App: React.FC = () => {
@@ -34,7 +35,8 @@ const App: React.FC = () => {
   };
 
   const isAdminOrSuper = currentUser?.roles?.includes(ROLE_ADMIN) || currentUser?.roles?.includes(ROLE_SUPER_MANAGER);
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password';
+  const isPending = currentUser?.status === 'PENDING';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || location.pathname === '/pending-approval';
 
   useEffect(() => {
     // Listen to foreground webpush events
@@ -162,39 +164,41 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/dashboard" element={<MobileDashboard />} />
+          <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route
+            path="/dashboard"
+            element={
+              isPending ? <Navigate to="/pending-approval" /> : <MobileDashboard />
+            }
+          />
           <Route
             path="/track/:id"
             element={
-              currentUser ? <OrderTracking /> : <Navigate to="/login" />
+              !currentUser ? <Navigate to="/login" /> : (isPending ? <Navigate to="/pending-approval" /> : <OrderTracking />)
             }
           />
           <Route
             path="/shop"
             element={
-              currentUser ? <Shop /> : <Navigate to="/login" />
+              !currentUser ? <Navigate to="/login" /> : (isPending ? <Navigate to="/pending-approval" /> : <Shop />)
             }
           />
           <Route
             path="/cart"
             element={
-              currentUser ? <Cart /> : <Navigate to="/login" />
+              !currentUser ? <Navigate to="/login" /> : (isPending ? <Navigate to="/pending-approval" /> : <Cart />)
             }
           />
           <Route
             path="/order/:id"
             element={
-              currentUser ? <OrderStatus /> : <Navigate to="/login" />
+              !currentUser ? <Navigate to="/login" /> : (isPending ? <Navigate to="/pending-approval" /> : <OrderStatus />)
             }
           />
           <Route
             path="/admin/*"
             element={
-              isAdminOrSuper ? (
-                <AdminDashboard />
-              ) : (
-                <Navigate to="/login" />
-              )
+              isAdminOrSuper ? <AdminDashboard /> : <Navigate to="/login" />
             }
           />
           <Route
@@ -204,26 +208,26 @@ const App: React.FC = () => {
             }
           />
           <Route
-            path="/staff/*"
+            path="/wholesaler/*"
             element={
-              currentUser?.roles.includes(ROLE_STAFF) ? (
-                <StaffDashboard />
+              currentUser?.roles.includes(ROLE_WHOLESALER) ? (
+                isPending ? <Navigate to="/pending-approval" /> : <WholesalerDashboard />
               ) : (
                 <Navigate to="/login" />
               )
             }
           />
           <Route
-            path="/wholesaler/*"
+            path="/staff/*"
             element={
-              currentUser?.roles.includes(ROLE_WHOLESALER) ? (
-                <WholesalerDashboard />
+              currentUser?.roles.includes(ROLE_STAFF) ? (
+                isPending ? <Navigate to="/pending-approval" /> : <StaffDashboard />
               ) : (
                 <Navigate to="/login" />
               )
             }
           />
-          <Route path="/" element={<Navigate to={currentUser ? (isAdminOrSuper ? '/admin' : (currentUser.roles?.includes(ROLE_WHOLESALER) ? '/wholesaler' : (currentUser.roles?.includes(ROLE_STAFF) ? '/staff' : '/shop'))) : '/login'} replace />} />
+          <Route path="/" element={<Navigate to={currentUser ? (isPending ? "/pending-approval" : "/shop") : "/login"} />} />
         </Routes>
       </main>
 

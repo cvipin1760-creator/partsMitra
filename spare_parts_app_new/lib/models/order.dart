@@ -48,6 +48,8 @@ class Order {
   final double? longitude;
   final String? deliveredBy;
   final String? deliveredAt;
+  final int pointsRedeemed;
+  final int pointsEarned;
 
   Order({
     required this.id,
@@ -63,17 +65,23 @@ class Order {
     this.longitude,
     this.deliveredBy,
     this.deliveredAt,
+    this.pointsRedeemed = 0,
+    this.pointsEarned = 0,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
     final itemsRaw = json['items'];
     final itemsList = itemsRaw is List
-        ? itemsRaw.map((i) => OrderItem.fromJson(i as Map<String, dynamic>)).toList()
+        ? itemsRaw
+            .map((i) => OrderItem.fromJson(i as Map<String, dynamic>))
+            .toList()
         : <OrderItem>[];
     final createdAtVal = json['createdAt'];
     final createdAtStr = createdAtVal is String
         ? createdAtVal
-        : (createdAtVal != null ? createdAtVal.toString() : DateTime.now().toIso8601String());
+        : (createdAtVal != null
+            ? createdAtVal.toString()
+            : DateTime.now().toIso8601String());
     return Order(
       id: (json['id'] as num).toInt(),
       customerId: (json['customerId'] as num).toInt(),
@@ -84,10 +92,16 @@ class Order {
       status: json['status']?.toString() ?? 'PENDING',
       items: itemsList,
       createdAt: createdAtStr,
-      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
-      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      latitude: json['latitude'] != null
+          ? (json['latitude'] as num).toDouble()
+          : null,
+      longitude: json['longitude'] != null
+          ? (json['longitude'] as num).toDouble()
+          : null,
       deliveredBy: json['deliveredBy'],
       deliveredAt: json['deliveredAt'],
+      pointsRedeemed: (json['pointsRedeemed'] as num? ?? 0).toInt(),
+      pointsEarned: (json['pointsEarned'] as num? ?? 0).toInt(),
     );
   }
 

@@ -56,6 +56,12 @@ public class Order {
     @Column(name = "deleted", nullable = false, columnDefinition = "boolean default false")
     private boolean deleted = false;
 
+    @Column(name = "points_redeemed", nullable = false, columnDefinition = "bigint default 0")
+    private Long pointsRedeemed = 0L;
+
+    @Column(name = "points_earned", nullable = false, columnDefinition = "bigint default 0")
+    private Long pointsEarned = 0L;
+
     public enum OrderStatus {
         PENDING, APPROVED, PACKED, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
     }

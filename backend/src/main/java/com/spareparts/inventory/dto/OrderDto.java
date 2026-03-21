@@ -21,5 +21,7 @@ public class OrderDto {
     private BigDecimal totalAmount;
     private Order.OrderStatus status;
     private List<OrderItemDto> items;
+    private Long pointsRedeemed;
+    private Long pointsEarned;
     private LocalDateTime createdAt;
 }

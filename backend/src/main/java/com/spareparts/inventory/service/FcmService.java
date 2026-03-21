@@ -210,6 +210,15 @@ public class FcmService {
         });
     }
 
+    public void sendToAdminAndSuperManager(String title, String message, Map<String, String> data) {
+        // 1. Send to ADMIN role
+        sendToRole("ROLE_ADMIN", title, message, null, null);
+        // 2. Send to SUPER_MANAGER role
+        sendToRole("ROLE_SUPER_MANAGER", title, message, null, null);
+        
+        // Also push via standard WebSocket /topic/orders if needed (though already handled in OrderService usually)
+    }
+
     private Notification saveNotification(Long userId, String title, String message, boolean isBroadcast, String targetRole) {
         Notification notification = new Notification();
         notification.setTitle(title);

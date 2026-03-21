@@ -1,13 +1,16 @@
 package com.spareparts.inventory.controller;
 
 import com.spareparts.inventory.entity.Notification;
+import com.spareparts.inventory.entity.User;
 import com.spareparts.inventory.repository.NotificationRepository;
+import com.spareparts.inventory.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import com.spareparts.inventory.service.FcmService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +22,31 @@ public class NotificationController {
     private NotificationRepository notificationRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private FcmService fcmService;
+
+    @GetMapping("/unread-count")
+    public ResponseEntity<Long> getUnreadCount(
+            @RequestParam String role,
+            @RequestParam Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || user.getLastNotificationReadAt() == null) {
+            return ResponseEntity.ok(notificationRepository.countByUserIdOrTargetRoleOrTargetRole(userId, role, "ALL"));
+        }
+        return ResponseEntity.ok(notificationRepository.countByUserIdOrTargetRoleOrTargetRoleAndCreatedAtAfter(userId, role, "ALL", user.getLastNotificationReadAt()));
+    }
+
+    @PostMapping("/mark-all-read")
+    public ResponseEntity<?> markAllRead(@RequestParam Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null) {
+            user.setLastNotificationReadAt(LocalDateTime.now());
+            userRepository.save(user);
+        }
+        return ResponseEntity.ok().build();
+    }
 
     @GetMapping("/my")
     public ResponseEntity<List<Notification>> getMyNotifications(

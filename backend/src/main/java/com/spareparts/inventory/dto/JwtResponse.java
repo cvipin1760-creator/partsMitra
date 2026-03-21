@@ -19,6 +19,7 @@ public class JwtResponse {
     private String status;
     private Double latitude;
     private Double longitude;
+    private Long points;
 
     public JwtResponse(String accessToken, Long id, String username, String email, List<String> roles) {
         this.token = accessToken;
@@ -28,7 +29,7 @@ public class JwtResponse {
         this.roles = roles;
     }
 
-    public JwtResponse(String accessToken, Long id, String username, String email, List<String> roles, String address, String status, Double latitude, Double longitude) {
+    public JwtResponse(String accessToken, Long id, String username, String email, List<String> roles, String address, String status, Double latitude, Double longitude, Long points) {
         this.token = accessToken;
         this.id = id;
         this.username = username;
@@ -38,5 +39,6 @@ public class JwtResponse {
         this.status = status;
         this.latitude = latitude;
         this.longitude = longitude;
+        this.points = points;
     }
 }

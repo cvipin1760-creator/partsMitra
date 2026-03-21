@@ -87,10 +87,10 @@ const Register = () => {
       const result = await AuthService.register(name, email, password, role, phone, '', otp, address);
       console.log('Registration success result:', result);
       
-      setMessage(`${t('common.success')}! Registration completed successfully. Redirecting to login...`);
+      setMessage(`${t('common.success')}! Registration completed successfully. Redirecting...`);
       setLoading(false);
       setTimeout(() => {
-        navigate('/login');
+        navigate('/pending-approval');
       }, 3000);
     } catch (error: any) {
       console.error('Registration error details:', error);

@@ -70,6 +70,12 @@ public class User {
     @Column(name = "deleted", nullable = false, columnDefinition = "boolean default false")
     private boolean deleted = false;
 
+    @Column(name = "points", nullable = false, columnDefinition = "bigint default 0")
+    private Long points = 0L;
+
+    @Column(name = "last_notification_read_at")
+    private LocalDateTime lastNotificationReadAt;
+
     public enum UserStatus {
         PENDING, ACTIVE, REJECTED
     }

@@ -364,6 +364,22 @@ class AuthService {
   Future<User?> getCurrentUser() async {
     final prefs = await _prefs();
 
+    if (Constants.useRemote) {
+      try {
+        final json = await _remote.getJson('/users/profile');
+        final current = prefs.getString("user");
+        if (current != null) {
+          final currentMap = jsonDecode(current);
+          json['token'] = currentMap['token'];
+        }
+        final user = User.fromJson(json);
+        await prefs.setString("user", jsonEncode(user.toJson()));
+        return user;
+      } catch (e) {
+        debugPrint("Error fetching remote user profile: $e");
+      }
+    }
+
     final userStr = prefs.getString("user");
 
     if (userStr == null) return null;
@@ -1024,6 +1040,7 @@ class AuthService {
           longitude: m['longitude'] != null
               ? (m['longitude'] as num).toDouble()
               : null,
+          points: (m['points'] as num? ?? 0).toInt(),
         );
       }).toList();
     }

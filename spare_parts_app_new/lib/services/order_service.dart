@@ -141,7 +141,7 @@ class OrderService {
   // CREATE ORDER
   // ===============================
 
-  Future<Order?> createOrder(int sellerId, List<OrderItem> items) async {
+  Future<Order?> createOrder(int sellerId, List<OrderItem> items, {int pointsToRedeem = 0}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userStr = prefs.getString('user');
@@ -154,6 +154,7 @@ class OrderService {
         final payload = {
           'sellerId': sellerId,
           'customerId': currentUser.id,
+          'pointsToRedeem': pointsToRedeem,
           'items': items
               .map(
                 (e) => {

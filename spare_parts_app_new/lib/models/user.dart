@@ -11,6 +11,7 @@ class User {
   final bool phoneVerified;
   final double? latitude;
   final double? longitude;
+  final int points;
 
   User({
     required this.id,
@@ -25,6 +26,7 @@ class User {
     this.phoneVerified = false,
     this.latitude,
     this.longitude,
+    this.points = 0,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -38,9 +40,15 @@ class User {
       address: json['address'],
       shopImagePath: json['shopImagePath'],
       status: json['status'],
-      phoneVerified: json['phoneVerified'] == true || json['phone_verified'] == 1,
-      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
-      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      phoneVerified:
+          json['phoneVerified'] == true || json['phone_verified'] == 1,
+      latitude: json['latitude'] != null
+          ? (json['latitude'] as num).toDouble()
+          : null,
+      longitude: json['longitude'] != null
+          ? (json['longitude'] as num).toDouble()
+          : null,
+      points: (json['points'] as num? ?? 0).toInt(),
     );
   }
 
@@ -58,6 +66,7 @@ class User {
       'phoneVerified': phoneVerified,
       'latitude': latitude,
       'longitude': longitude,
+      'points': points,
     };
   }
 }

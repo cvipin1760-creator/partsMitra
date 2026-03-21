@@ -11,6 +11,8 @@ import java.util.List;
 public class OrderRequest {
     @NotNull
     private Long sellerId;
+
+    private Long pointsToRedeem;
     
     @NotEmpty
     private List<OrderItemDto> items;

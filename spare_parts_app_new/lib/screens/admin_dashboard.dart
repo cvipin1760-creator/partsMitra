@@ -37,7 +37,6 @@ import 'package:translator/translator.dart';
 import 'package:open_file/open_file.dart';
 import '../widgets/product_grid_item.dart';
 import '../widgets/ai_chatbot_widget.dart';
-import '../services/auth_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'admin_settings_screen.dart';
@@ -45,7 +44,6 @@ import 'offers_screen.dart';
 import '../services/settings_service.dart';
 import '../widgets/cart_badge.dart';
 import '../widgets/notification_badge.dart';
-import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -595,6 +593,20 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
   void initState() {
     super.initState();
     _fetchStats();
+    _setupOrderSubscription();
+  }
+
+  StreamSubscription? _orderSub;
+
+  void _setupOrderSubscription() {
+    // Already handled globally by NotificationService usually,
+    // but we can add specific listener here for the Dashboard if needed
+  }
+
+  @override
+  void dispose() {
+    _orderSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchStats() async {
@@ -723,7 +735,7 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
               () => (context.findAncestorStateOfType<_AdminDashboardState>())
                   ?.setState(() =>
                       (context.findAncestorStateOfType<_AdminDashboardState>())
-                          ?._selectedIndex = 3),
+                          ?._selectedIndex = 4),
             ),
             _buildQuickAction(
               context,
@@ -733,7 +745,7 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
               () => (context.findAncestorStateOfType<_AdminDashboardState>())
                   ?.setState(() =>
                       (context.findAncestorStateOfType<_AdminDashboardState>())
-                          ?._selectedIndex = 6),
+                          ?._selectedIndex = 7),
             ),
             _buildQuickAction(
               context,
@@ -743,7 +755,7 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
               () => (context.findAncestorStateOfType<_AdminDashboardState>())
                   ?.setState(() =>
                       (context.findAncestorStateOfType<_AdminDashboardState>())
-                          ?._selectedIndex = 7),
+                          ?._selectedIndex = 8),
             ),
             _buildQuickAction(
               context,
@@ -4057,6 +4069,7 @@ class AllUsersScreen extends StatefulWidget {
 class _AllUsersScreenState extends State<AllUsersScreen> {
   final DatabaseService _dbService = DatabaseService();
   final AuthService _authService = AuthService();
+  final RemoteClient _remote = RemoteClient();
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
   bool _isLoading = true;
@@ -4090,6 +4103,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                   'role': u.roles.isNotEmpty ? u.roles.first : 'N/A',
                   'status': u.status ?? 'PENDING',
                   'address': u.address,
+                  'points': u.points,
                 })
             .toList();
         _filteredUsers = List.from(_users);
@@ -4145,6 +4159,68 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
             child: const Text('Update'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showPointsDialog(int userId, int currentPoints) {
+    final controller = TextEditingController(text: '0');
+    String operation = 'ADD';
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Manage Points (Current: $currentPoints)'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: operation,
+                decoration: const InputDecoration(labelText: 'Operation'),
+                items: const [
+                  DropdownMenuItem(value: 'ADD', child: Text('Add Points')),
+                  DropdownMenuItem(
+                      value: 'SUBTRACT', child: Text('Subtract Points')),
+                  DropdownMenuItem(value: 'SET', child: Text('Set Points')),
+                ],
+                onChanged: (val) => setDialogState(() => operation = val!),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final points = int.tryParse(controller.text) ?? 0;
+                try {
+                  await _remote.putJson(
+                    '/admin/users/$userId/points?points=$points&operation=$operation',
+                    {},
+                  );
+                  Navigator.pop(ctx);
+                  _fetchUsers();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -4397,7 +4473,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                       ),
                       title: Text(user['name'] ?? 'No Name'),
                       subtitle: Text(
-                        '${user['email']}\nRole: ${user['role']} | Status: ${user['status']}${user['latitude'] != null ? "\nLocation: Captured" : ""}',
+                        '${user['email']}\nRole: ${user['role']} | Status: ${user['status']}\nPoints: ${user['points'] ?? 0}${user['latitude'] != null ? "\nLocation: Captured" : ""}',
                       ),
                       isThreeLine: true,
                       trailing: PopupMenuButton<String>(
@@ -4434,6 +4510,12 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                               user['address'] as String? ?? '',
                             );
                           }
+                          if (val == 'MANAGE_POINTS') {
+                            _showPointsDialog(
+                              userId,
+                              (user['points'] as num? ?? 0).toInt(),
+                            );
+                          }
                           if (val == 'VIEW_SHOP') {
                             _viewShopImage(user['shopImagePath'] as String?);
                           }
@@ -4462,6 +4544,10 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                           const PopupMenuItem(
                             value: 'UPDATE_ADDRESS',
                             child: Text('Edit Address'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'MANAGE_POINTS',
+                            child: Text('Manage Points'),
                           ),
                           if (user['shopImagePath'] != null)
                             const PopupMenuItem(

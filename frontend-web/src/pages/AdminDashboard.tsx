@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, useCallback } from 'react';
 import api, { API_BASE_URL } from '../services/api';
 import { Link } from 'react-router-dom';
@@ -86,6 +86,11 @@ const AdminDashboard = () => {
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [productSearchTerm, setProductSearchTerm] = useState('');
+
+  const [showPointsDialog, setShowPointsDialog] = useState(false);
+  const [pointsUser, setPointsUser] = useState<any>(null);
+  const [pointsAmount, setPointsAmount] = useState(0);
+  const [pointsOperation, setPointsOperation] = useState('ADD');
 
   useEffect(() => {
     const init = async () => {
@@ -515,6 +520,32 @@ const AdminDashboard = () => {
     }
   };
 
+  const deleteUser = async (userId: number) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      fetchUsers();
+      fetchDeletedItems();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete user');
+    }
+  };
+
+  const adjustUserPoints = async () => {
+    if (!pointsUser) return;
+    try {
+      await api.put(`/admin/users/${pointsUser.id}/points?points=${pointsAmount}&operation=${pointsOperation}`, {});
+      setShowPointsDialog(false);
+      setPointsUser(null);
+      setPointsAmount(0);
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to adjust points');
+    }
+  };
+
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -823,6 +854,7 @@ const AdminDashboard = () => {
                         <div>
                           <div className="font-bold text-gray-900">{user.name}</div>
                           <div className="text-xs text-gray-500">{user.email}</div>
+                          <div className="text-[10px] font-bold text-amber-600">Points: {user.points || 0}</div>
                         </div>
                       </div>
                     </td>
@@ -849,6 +881,18 @@ const AdminDashboard = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => {
+                            setPointsUser(user);
+                            setPointsAmount(0);
+                            setPointsOperation('ADD');
+                            setShowPointsDialog(true);
+                          }}
+                          className="p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition"
+                          title="Manage Points"
+                        >
+                          <Star size={18} />
+                        </button>
                         {user.status === 'PENDING' ? (
                           <button
                             onClick={() => updateUserStatus(user.id, 'ACTIVE')}
@@ -2167,6 +2211,60 @@ const AdminDashboard = () => {
                 <button type="submit" className="bg-primary-600 text-white px-8 py-2 rounded-xl hover:bg-primary-700 font-black shadow-lg shadow-primary-100 transition">Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showPointsDialog && pointsUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-8 shadow-2xl">
+            <h3 className="text-xl font-black text-gray-900 mb-2">Manage Points</h3>
+            <p className="text-sm text-gray-500 mb-6 font-bold">
+              User: <span className="text-primary-600">{pointsUser.name}</span>
+              <br />
+              Current Balance: <span className="text-amber-600">{pointsUser.points || 0}</span>
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase mb-2">Operation</label>
+                <select
+                  value={pointsOperation}
+                  onChange={(e) => setPointsOperation(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="ADD">Add Points</option>
+                  <option value="SUBTRACT">Subtract Points</option>
+                  <option value="SET">Set Points</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase mb-2">Amount</label>
+                <input
+                  type="number"
+                  value={pointsAmount}
+                  onChange={(e) => setPointsAmount(parseInt(e.target.value) || 0)}
+                  className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Enter point amount..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowPointsDialog(false)}
+                  className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={adjustUserPoints}
+                  className="flex-1 bg-primary-600 text-white px-4 py-3 rounded-xl font-black shadow-lg shadow-primary-100 hover:bg-primary-700 transition"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

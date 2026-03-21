@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, Package } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, Package, Star } from 'lucide-react';
 
 const Cart: React.FC = () => {
   const { items, updateQty, removeItem, total, clear } = useCart();
+  const { currentUser, setCurrentUser } = useAuth();
   const { t, tp } = useLanguage();
   const [placing, setPlacing] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
   const [msg, setMsg] = useState('');
   const navigate = useNavigate();
+
+  const userPoints = currentUser?.points || 0;
+  const pointsToRedeem = usePoints ? Math.min(userPoints, total) : 0;
+  const finalTotal = total - pointsToRedeem;
 
   const checkout = async () => {
     if (!items.length) return;
@@ -38,6 +45,7 @@ const Cart: React.FC = () => {
       const orderPromises = Object.entries(wholesalerGroups).map(([wid, groupItems]) => {
         const payload = {
           sellerId: parseInt(wid),
+          pointsToRedeem: usePoints ? pointsToRedeem : 0, // In multi-seller cart, this might need refinement
           items: groupItems.map((i) => ({
             productId: i.productId,
             productName: i.name,
@@ -49,6 +57,17 @@ const Cart: React.FC = () => {
       });
 
       const responses = await Promise.all(orderPromises);
+      
+      // Refresh user points
+      try {
+        const profileRes = await api.get('/users/profile');
+        const updatedUser = { ...currentUser, ...profileRes.data };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      } catch (e) {
+        console.error('Failed to refresh profile after checkout:', e);
+      }
+
       clear();
       
       if (responses.length === 1) {
@@ -199,9 +218,39 @@ const Cart: React.FC = () => {
                   <span>Delivery Fee</span>
                   <span className="text-green-600 font-medium">Free</span>
                 </div>
+                {userPoints > 0 && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                        <span className="text-sm font-bold text-gray-700">Redeem Points</span>
+                      </div>
+                      <button
+                        onClick={() => setUsePoints(!usePoints)}
+                        className={`w-10 h-5 rounded-full transition-colors relative ${usePoints ? 'bg-primary-600' : 'bg-gray-200'}`}
+                      >
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${usePoints ? 'left-6' : 'left-1'}`} />
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Available: <span className="font-bold text-amber-600">{userPoints}</span> points (₹1 = 1 point)
+                    </div>
+                    {usePoints && (
+                      <div className="flex justify-between text-amber-600 font-bold mt-2 text-sm">
+                        <span>Points Discount</span>
+                        <span>-₹{pointsToRedeem}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
                   <span className="text-lg font-bold text-gray-900">{t('shop.total')}</span>
-                  <span className="text-2xl font-black text-primary-700">₹{total}</span>
+                  <div className="text-right">
+                    {usePoints && pointsToRedeem > 0 && (
+                      <div className="text-sm text-gray-400 line-through">₹{total}</div>
+                    )}
+                    <div className="text-2xl font-black text-primary-700">₹{finalTotal}</div>
+                  </div>
                 </div>
               </div>
 

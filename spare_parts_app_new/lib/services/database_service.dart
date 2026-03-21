@@ -19,7 +19,7 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), 'spare_parts.db');
     final db = await openDatabase(
       path,
-      version: 17,
+      version: 18,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -184,6 +184,20 @@ class DatabaseService {
       try {
         await db.execute(
             'ALTER TABLE users ADD COLUMN phone_verified INTEGER DEFAULT 0');
+      } catch (_) {}
+    }
+    if (oldVersion < 18) {
+      try {
+        await db
+            .execute('ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0');
+      } catch (_) {}
+      try {
+        await db.execute(
+            'ALTER TABLE orders ADD COLUMN pointsRedeemed INTEGER DEFAULT 0');
+      } catch (_) {}
+      try {
+        await db.execute(
+            'ALTER TABLE orders ADD COLUMN pointsEarned INTEGER DEFAULT 0');
       } catch (_) {}
     }
   }

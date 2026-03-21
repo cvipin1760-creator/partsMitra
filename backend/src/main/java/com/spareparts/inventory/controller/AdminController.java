@@ -208,6 +208,23 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/users/{userId}/points")
+    public ResponseEntity<?> adjustUserPoints(@PathVariable Long userId, @RequestParam Long points, @RequestParam(defaultValue = "SET") String operation) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if ("ADD".equalsIgnoreCase(operation)) {
+            user.setPoints(user.getPoints() + points);
+        } else if ("SUBTRACT".equalsIgnoreCase(operation)) {
+            user.setPoints(Math.max(0, user.getPoints() - points));
+        } else {
+            user.setPoints(points);
+        }
+        
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("userId", userId, "newPoints", user.getPoints()));
+    }
+
     @PutMapping("/users/{userId}/role")
     public ResponseEntity<?> updateUserRole(@PathVariable Long userId, @RequestParam RoleName roleName) {
         User user = userRepository.findById(userId)

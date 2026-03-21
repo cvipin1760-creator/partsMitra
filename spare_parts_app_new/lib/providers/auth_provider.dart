@@ -44,11 +44,17 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> refreshUser() async {
-    _user = await _authService.getCurrentUser();
-    if (_user != null) {
-      _updateFcmToken();
-    }
+    _isLoading = true;
     notifyListeners();
+    try {
+      _user = await _authService.getCurrentUser();
+      if (_user != null) {
+        _updateFcmToken();
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> login(String email, String password) async {
