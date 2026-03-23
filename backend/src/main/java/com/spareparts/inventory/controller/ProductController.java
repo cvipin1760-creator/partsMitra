@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "${app.cors.allowed-origins}", maxAge = 3600)
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {

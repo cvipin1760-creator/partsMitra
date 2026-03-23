@@ -40,7 +40,6 @@ import com.spareparts.inventory.repository.VoiceTrainingSampleRepository;
 import com.spareparts.inventory.entity.VoiceTrainingSample;
 import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "${app.cors.allowed-origins}", maxAge = 3600)
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER') or hasRole('STAFF')")

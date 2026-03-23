@@ -666,6 +666,8 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const logoUrl = getImageUrl(getSetting('LOGO_URL', ''));
+
   if (loading) return (
     <div className="container mx-auto p-4 md:p-6">
       <div className="flex justify-between items-center mb-8">
@@ -686,9 +688,19 @@ const AdminDashboard = () => {
   return (
     <div className={`container mx-auto p-4 md:p-6 ${isSuperManager ? 'bg-purple-50 min-h-screen' : ''}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
-        <h1 className={`text-2xl md:text-3xl font-black ${isSuperManager ? 'text-purple-800' : 'text-gray-900'}`}>
-          {isSuperManager ? 'Super Manager Panel' : 'Admin Panel'}
-        </h1>
+        <div className="flex items-center gap-3">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              alt="Logo"
+              className="h-9 w-auto rounded-md border border-gray-200 bg-white p-1"
+            />
+          ) : null}
+          <h1 className={`text-2xl md:text-3xl font-black ${isSuperManager ? 'text-purple-800' : 'text-gray-900'}`}>
+            {isSuperManager ? 'Super Manager Panel' : 'Admin Panel'}
+          </h1>
+        </div>
         <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm">
             <span className="text-[10px] font-black text-gray-400 uppercase">Period:</span>
