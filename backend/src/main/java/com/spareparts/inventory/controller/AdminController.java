@@ -221,7 +221,21 @@ public class AdminController {
         
         if ("ADD".equalsIgnoreCase(operation)) {
             user.setPoints(user.getPoints() + points);
-        } else if ("SUBTRACT".equalsIgnoreCase(operation)) {
+        } else if ("SUBTRACT".equalsIgnoreCase(operation) || "REDEEM".equalsIgnoreCase(operation)) {
+            if ("REDEEM".equalsIgnoreCase(operation)) {
+                long minRedeem = 100L;
+                try {
+                    String settingValue = systemSettingRepository.getSettingValue("MIN_REDEEM_POINTS", "100");
+                    minRedeem = Long.parseLong(settingValue);
+                } catch (Exception ignored) {}
+                
+                if (user.getPoints() < minRedeem) {
+                    return ResponseEntity.badRequest().body("Minimum " + minRedeem + " points is required to redeem it");
+                }
+                if (points > user.getPoints()) {
+                    return ResponseEntity.badRequest().body("Insufficient points to redeem");
+                }
+            }
             user.setPoints(Math.max(0, user.getPoints() - points));
         } else {
             user.setPoints(points);

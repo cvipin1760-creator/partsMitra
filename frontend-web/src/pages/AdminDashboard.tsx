@@ -90,6 +90,7 @@ const AdminDashboard = () => {
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [cashbackSearchTerm, setCashbackSearchTerm] = useState('');
 
   const [showPointsDialog, setShowPointsDialog] = useState(false);
   const [pointsUser, setPointsUser] = useState<any>(null);
@@ -558,9 +559,10 @@ const AdminDashboard = () => {
       setPointsUser(null);
       setPointsAmount(0);
       fetchUsers();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to adjust points');
+      const msg = err.response?.data || 'Failed to adjust points';
+      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   };
 
@@ -689,14 +691,12 @@ const AdminDashboard = () => {
     <div className={`container mx-auto p-4 md:p-6 ${isSuperManager ? 'bg-purple-50 min-h-screen' : ''}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div className="flex items-center gap-3">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-              alt="Logo"
-              className="h-9 w-auto rounded-md border border-gray-200 bg-white p-1"
-            />
-          ) : null}
+          <img
+            src="/logo.png"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = logoUrl; }}
+            alt="Logo"
+            className="h-10 w-auto rounded-xl border border-gray-200 bg-white p-1 shadow-sm"
+          />
           <h1 className={`text-2xl md:text-3xl font-black ${isSuperManager ? 'text-purple-800' : 'text-gray-900'}`}>
             {isSuperManager ? 'Super Manager Panel' : 'Admin Panel'}
           </h1>
@@ -824,6 +824,7 @@ const AdminDashboard = () => {
         {[
           { id: 'users', label: 'Users', icon: Users },
           { id: 'orders', label: 'Transactions', icon: ShoppingBag },
+          { id: 'cashback', label: 'Cashback Points', icon: Star },
           { id: 'products', label: 'Inventory', icon: Package },
           { id: 'deliveries', label: 'Deliveries', icon: Truck },
           { id: 'recycle', label: 'Recycle Bin', icon: Trash2 },
@@ -1585,6 +1586,110 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {activeTab === 'cashback' && (
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-2">
+            <div className="relative w-full md:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search users by name or email..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition shadow-sm"
+                value={cashbackSearchTerm}
+                onChange={(e) => setCashbackSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase">
+              <Star size={16} className="text-amber-500" />
+              <span>{users.filter(u => 
+                (u.name.toLowerCase().includes(cashbackSearchTerm.toLowerCase()) || 
+                 u.email.toLowerCase().includes(cashbackSearchTerm.toLowerCase())) &&
+                (u.points > 0 || orders.some(o => o.customerId === u.id && (o.pointsEarned > 0 || o.pointsRedeemed > 0)))
+              ).length} Users with Point Activity</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User Details</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Current Points</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {users.filter(u => 
+                  u.name.toLowerCase().includes(cashbackSearchTerm.toLowerCase()) || 
+                  u.email.toLowerCase().includes(cashbackSearchTerm.toLowerCase())
+                ).map((user) => {
+                  const userOrders = orders.filter(o => o.customerId === user.id && (o.pointsEarned > 0 || o.pointsRedeemed > 0));
+                  return (
+                    <React.Fragment key={user.id}>
+                      <tr className="hover:bg-gray-50/50 transition">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-sm uppercase">
+                              {user.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900">{user.name}</div>
+                              <div className="text-xs text-gray-500">{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`px-4 py-1.5 rounded-full text-sm font-black ${
+                            (user.points || 0) >= 100 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {user.points || 0} pts
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {
+                                setPointsUser(user);
+                                setPointsAmount(0);
+                                setPointsOperation('REDEEM');
+                                setShowPointsDialog(true);
+                              }}
+                              className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-bold hover:bg-primary-700 transition"
+                            >
+                              Redeem Points
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {userOrders.length > 0 && (
+                        <tr>
+                          <td colSpan={3} className="px-8 py-4 bg-gray-50/30">
+                            <div className="space-y-2">
+                              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recent Activity</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {userOrders.slice(0, 5).map((order: any) => (
+                                  <div key={order.id} className="bg-white p-2 rounded-lg border border-gray-100 flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-gray-400">#{order.id} • {new Date(order.createdAt).toLocaleDateString()}</span>
+                                    <div className="flex gap-2">
+                                      {order.pointsEarned > 0 && <span className="text-[10px] font-black text-green-600">+{order.pointsEarned} pts</span>}
+                                      {order.pointsRedeemed > 0 && <span className="text-[10px] font-black text-red-600">-{order.pointsRedeemed} pts</span>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'categories' && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -1771,7 +1876,7 @@ const AdminDashboard = () => {
                       <input
                         type="number"
                         min={0}
-                        value={parseInt(getSetting('MIN_REDEEM_POINTS', '0'))}
+                        value={parseInt(getSetting('MIN_REDEEM_POINTS', '100'))}
                         onChange={(e) => updateSetting('MIN_REDEEM_POINTS', e.target.value)}
                         className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
                       />
@@ -2503,9 +2608,10 @@ const AdminDashboard = () => {
                   onChange={(e) => setPointsOperation(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
                 >
+                  <option value="SET">Set Points</option>
                   <option value="ADD">Add Points</option>
                   <option value="SUBTRACT">Subtract Points</option>
-                  <option value="SET">Set Points</option>
+                  <option value="REDEEM">Redeem Points</option>
                 </select>
               </div>
               

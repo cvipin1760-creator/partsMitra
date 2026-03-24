@@ -14,6 +14,7 @@ import '../utils/constants.dart';
 import 'profile_screen.dart';
 import '../widgets/notification_badge.dart';
 import '../providers/theme_provider.dart';
+import 'staff_mechanic_locations_screen.dart';
 
 class StaffDashboard extends StatefulWidget {
   const StaffDashboard({super.key});
@@ -32,6 +33,8 @@ class _StaffDashboardState extends State<StaffDashboard> {
       case 0:
         return const StaffOrdersScreen();
       case 1:
+        return const StaffMechanicLocationsScreen();
+      case 2:
       default:
         return const ProfileScreen();
     }
@@ -173,6 +176,11 @@ class _StaffDashboardState extends State<StaffDashboard> {
               icon: Icon(Icons.delivery_dining_outlined),
               selectedIcon: Icon(Icons.delivery_dining),
               label: 'Deliveries',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.location_on_outlined),
+              selectedIcon: Icon(Icons.location_on),
+              label: 'Mechanics',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../utils/constants.dart';
@@ -58,39 +59,83 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _maybeShowAdminBanner() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearMaterialBanners();
+      }
+      return;
+    }
     await SettingsService.preloadRemoteSettings();
     final enabled = SettingsService.getCachedRemoteSetting(
             'LOGIN_BANNER_ENABLED', 'false') ==
         'true';
     final text =
         SettingsService.getCachedRemoteSetting('LOGIN_BANNER_TEXT', '');
-    final rawImageUrl =
-        SettingsService.getCachedRemoteSetting('LOGIN_BANNER_IMAGE_URL', '');
-    final imageUrl = rawImageUrl.startsWith('https://') ? rawImageUrl : '';
+    final rawImage =
+        SettingsService.getCachedRemoteSetting('LOGIN_BANNER_IMAGE_URL', '')
+            .trim();
+    Uri? parsedImageUri;
+    try {
+      parsedImageUri = Uri.tryParse(rawImage);
+    } catch (_) {
+      parsedImageUri = null;
+    }
+    final bool isValidImageUrl = parsedImageUri != null &&
+        parsedImageUri.isAbsolute &&
+        (parsedImageUri.scheme == 'http' || parsedImageUri.scheme == 'https') &&
+        parsedImageUri.host.isNotEmpty;
+    final imageUrl = isValidImageUrl ? rawImage : '';
     final showButton = SettingsService.getCachedRemoteSetting(
             'LOGIN_BANNER_SHOW_BUTTON', 'false') ==
         'true';
-    final buttonText = SettingsService.getCachedRemoteSetting(
-        'LOGIN_BANNER_BUTTON_TEXT', 'Check Offers');
+    final buttonText = (SettingsService.getCachedRemoteSetting(
+                'LOGIN_BANNER_BUTTON_TEXT', 'Check Offers'))
+            .trim()
+            .isNotEmpty
+        ? SettingsService.getCachedRemoteSetting(
+            'LOGIN_BANNER_BUTTON_TEXT', 'Check Offers')
+        : 'Check Offers';
+    final cooldownHoursStr = SettingsService.getCachedRemoteSetting(
+        'LOGIN_BANNER_COOLDOWN_HOURS', '24');
+    final cooldownHours = int.tryParse(cooldownHoursStr) ?? 24;
 
     if (!enabled || text.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final lastText = prefs.getString('login_banner_last_text');
+    final dismissedUntil = prefs.getInt('login_banner_dismissed_until') ?? 0;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final dismissalActive = (lastText == text) && dismissedUntil > nowMs;
+    if (dismissalActive) return;
+    await prefs.setString('login_banner_last_text', text);
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearMaterialBanners();
     ScaffoldMessenger.of(context).showMaterialBanner(
       MaterialBanner(
         content: Text(text),
         leading: imageUrl.isNotEmpty
-            ? CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl),
-                radius: 20,
+            ? ClipOval(
+                child: Image.network(
+                  imageUrl,
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stack) {
+                    return const Icon(Icons.campaign_outlined);
+                  },
+                ),
               )
             : const Icon(Icons.campaign_outlined),
         actions: [
           if (showButton)
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                final p = await SharedPreferences.getInstance();
+                final until = DateTime.now()
+                    .add(Duration(hours: cooldownHours))
+                    .millisecondsSinceEpoch;
+                await p.setInt('login_banner_dismissed_until', until);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const OffersScreen()),
@@ -99,9 +144,14 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Text(buttonText),
             ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               if (!mounted) return;
               ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              final p = await SharedPreferences.getInstance();
+              final until = DateTime.now()
+                  .add(Duration(hours: cooldownHours))
+                  .millisecondsSinceEpoch;
+              await p.setInt('login_banner_dismissed_until', until);
             },
             child: const Text('Dismiss'),
           ),
@@ -147,6 +197,26 @@ class _LoginScreenState extends State<LoginScreen> {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  void _navigateToDashboard() {
+    final ap = Provider.of<AuthProvider>(context, listen: false);
+    final user = ap.user;
+    if (user == null) return;
+    String route = '/dashboard/mechanic';
+    if (user.roles.contains(Constants.roleRetailer)) {
+      route = '/dashboard/retailer';
+    } else if (user.roles.contains(Constants.roleMechanic)) {
+      route = '/dashboard/mechanic';
+    } else if (user.roles.contains(Constants.roleWholesaler)) {
+      route = '/dashboard/wholesaler';
+    } else if (user.roles.contains(Constants.roleAdmin) ||
+        user.roles.contains(Constants.roleSuperManager)) {
+      route = '/dashboard/admin';
+    } else if (user.roles.contains(Constants.roleStaff)) {
+      route = '/dashboard/staff';
+    }
+    Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
   }
 
   void _handleLogin() async {
@@ -202,6 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!_isOtpLogin) await _saveCredentials();
         final userName = authProvider.user?.name ?? 'User';
         _showFeedback('Welcome $userName! Login successful.');
+        _navigateToDashboard();
       } else {
         _showFeedback(
           _isOtpLogin
@@ -488,6 +559,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   if (ok && mounted) {
                                     Navigator.pop(ctx); // Close sheet
                                     _showFeedback('Login successful!');
+                                    _navigateToDashboard();
                                   } else {
                                     if (mounted) {
                                       ScaffoldMessenger.of(context)
@@ -543,6 +615,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         final userName = user.name;
         _showFeedback('Welcome $userName! Google Sign-In successful.');
+        _navigateToDashboard();
       }
     } catch (error) {
       String msg = error.toString();

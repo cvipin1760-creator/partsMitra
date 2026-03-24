@@ -72,12 +72,51 @@ class _RetailerOrdersScreenState extends State<RetailerOrdersScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        if (Navigator.of(context).canPop()) {
+          return true;
+        }
+        final roles = auth.user?.roles ?? [];
+        String fallback = '/dashboard/retailer';
+        if (roles.contains(Constants.roleMechanic)) {
+          fallback = '/dashboard/mechanic';
+        } else if (roles.contains(Constants.roleWholesaler)) {
+          fallback = '/dashboard/wholesaler';
+        } else if (roles.contains(Constants.roleAdmin) ||
+            roles.contains(Constants.roleSuperManager)) {
+          fallback = '/dashboard/admin';
+        } else if (roles.contains(Constants.roleStaff)) {
+          fallback = '/dashboard/staff';
+        }
+        Navigator.of(context).pushNamedAndRemoveUntil(fallback, (r) => false);
+        return false;
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('My Orders'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                final roles = auth.user?.roles ?? [];
+                String fallback = '/dashboard/retailer';
+                if (roles.contains(Constants.roleMechanic)) {
+                  fallback = '/dashboard/mechanic';
+                } else if (roles.contains(Constants.roleWholesaler)) {
+                  fallback = '/dashboard/wholesaler';
+                } else if (roles.contains(Constants.roleAdmin) ||
+                    roles.contains(Constants.roleSuperManager)) {
+                  fallback = '/dashboard/admin';
+                } else if (roles.contains(Constants.roleStaff)) {
+                  fallback = '/dashboard/staff';
+                }
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil(fallback, (r) => false);
+              }
+            },
         ),
       ),
       body: _isLoading
@@ -277,7 +316,7 @@ class _RetailerOrdersScreenState extends State<RetailerOrdersScreen> {
                 },
               ),
             ),
-    );
+    ));
   }
 
   Widget _buildStatusBadge(String status) {

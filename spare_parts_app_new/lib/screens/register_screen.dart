@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 import 'otp_verification_screen.dart';
 import '../services/settings_service.dart';
+import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final bool showAppBar;
@@ -480,7 +481,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: TextStyle(color: Colors.white),
                       ),
                       TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        },
                         child: const Text(
                           'Login',
                           style: TextStyle(

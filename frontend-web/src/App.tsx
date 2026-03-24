@@ -84,7 +84,8 @@ const App: React.FC = () => {
       {!isAuthPage && (
         <nav className="bg-white shadow-sm px-4 py-3 flex flex-col md:flex-row justify-between items-center space-y-3 md:space-y-0 sticky top-0 z-50">
           <div className="flex items-center justify-between w-full md:w-auto">
-            <Link to="/" className="text-xl font-bold text-primary-600">
+            <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary-600">
+              <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
               SpareHub
             </Link>
           </div>

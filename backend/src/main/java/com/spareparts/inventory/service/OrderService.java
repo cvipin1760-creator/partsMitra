@@ -190,14 +190,19 @@ public class OrderService {
 
         OrderDto dto = convertToDto(order);
 
-        // Notify Admins and Super Managers
+        // Notify Super Managers and Staff; and notify the customer
         try {
             String title = "New Order #" + order.getId();
             String message = "New order received from " + customer.getName() + " for Rs. " + order.getTotalAmount();
-            fcmService.sendToAdminAndSuperManager(title, message, Map.of("orderId", String.valueOf(order.getId()), "route", "orders"));
+            fcmService.sendToRole("ROLE_SUPER_MANAGER", title, message, "DAILY", null);
+            fcmService.sendToRole("ROLE_STAFF", title, message, "DAILY", null);
+            try {
+                fcmService.sendOrderStatusToUser(customer.getId(), order.getId(), "Order placed", "Your order #" + order.getId() + " has been placed successfully.");
+            } catch (Exception ignored) {}
             if (order.getPointsRedeemed() != null && order.getPointsRedeemed() > 0) {
                 String redeemMsg = customer.getName() + " redeemed " + order.getPointsRedeemed() + " points (₹" + order.getPointsRedeemed() + ") on Order #" + order.getId();
-                fcmService.sendToAdminAndSuperManager("Points Redeemed", redeemMsg, Map.of("orderId", String.valueOf(order.getId()), "route", "orders"));
+                fcmService.sendToRole("ROLE_SUPER_MANAGER", "Points Redeemed", redeemMsg, "DAILY", null);
+                fcmService.sendToRole("ROLE_STAFF", "Points Redeemed", redeemMsg, "DAILY", null);
                 try {
                     fcmService.sendOrderStatusToUser(customer.getId(), order.getId(), "You saved ₹" + order.getPointsRedeemed(), "Thanks for ordering with SpareHub! You saved ₹" + order.getPointsRedeemed() + " by redeeming your points.");
                 } catch (Exception ignored) {}
@@ -206,7 +211,7 @@ public class OrderService {
             // Real-time update for admin dashboard - Restricted topic
             messagingTemplate.convertAndSend("/topic/admin/orders", dto);
         } catch (Exception e) {
-            System.err.println("Failed to notify admins of new order: " + e.getMessage());
+            System.err.println("Failed to notify stakeholders of new order: " + e.getMessage());
         }
 
         return dto;

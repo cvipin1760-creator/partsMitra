@@ -47,18 +47,29 @@ class WebSocketService {
           );
 
           // 2. Subscribe to role-specific notifications
-          if (role != null) {
-            _client?.subscribe(
-              destination: '/topic/notifications/$role',
-              callback: (frame) {
-                if (frame.body != null) {
-                  final data = jsonDecode(frame.body!);
-                  onMessageReceived(data);
-                }
-              },
-            );
-            // Admin/Super Manager: subscribe to all order updates
-            if (role == 'ROLE_ADMIN' || role == 'ROLE_SUPER_MANAGER') {
+          if (role != null && role.isNotEmpty) {
+            final roles = role
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+            bool isAdmin = false;
+            for (final r in roles) {
+              _client?.subscribe(
+                destination: '/topic/notifications/$r',
+                callback: (frame) {
+                  if (frame.body != null) {
+                    final data = jsonDecode(frame.body!);
+                    onMessageReceived(data);
+                  }
+                },
+              );
+              if (r == 'ROLE_ADMIN' || r == 'ROLE_SUPER_MANAGER') {
+                isAdmin = true;
+              }
+            }
+            // Admin/Super Manager: subscribe to all order updates once
+            if (isAdmin) {
               _client?.subscribe(
                 destination: '/topic/admin/orders',
                 callback: (frame) {

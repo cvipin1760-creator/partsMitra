@@ -126,6 +126,18 @@ class OrderService {
   Future<List<Map<String, dynamic>>> getOrderRequests() async {
     try {
       if (Constants.useRemote) {
+        // Only admins/super managers/staff can fetch custom requests
+        final prefs = await SharedPreferences.getInstance();
+        final userStr = prefs.getString('user');
+        if (userStr == null) return [];
+        final currentUser = User.fromJson(jsonDecode(userStr));
+        final roles = currentUser.roles;
+        final isPrivileged = roles.contains(Constants.roleAdmin) ||
+            roles.contains(Constants.roleSuperManager) ||
+            roles.contains(Constants.roleStaff);
+        if (!isPrivileged) {
+          return [];
+        }
         final list = await _remote.getList('/orders/custom-requests');
         return list.map((e) => e as Map<String, dynamic>).toList();
       }
@@ -141,7 +153,8 @@ class OrderService {
   // CREATE ORDER
   // ===============================
 
-  Future<Order?> createOrder(int sellerId, List<OrderItem> items, {int pointsToRedeem = 0}) async {
+  Future<Order?> createOrder(int sellerId, List<OrderItem> items,
+      {int pointsToRedeem = 0}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userStr = prefs.getString('user');

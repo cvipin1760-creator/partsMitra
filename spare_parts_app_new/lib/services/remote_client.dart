@@ -8,8 +8,8 @@ import 'package:flutter/foundation.dart';
 
 class RemoteClient {
   final String baseUrl = Constants.baseUrl;
-  static const int _maxRetries = 3;
-  static const Duration _timeout = Duration(seconds: 45);
+  static const int _maxRetries = 4;
+  static const Duration _timeout = Duration(seconds: 60);
   static const Duration _retryDelay = Duration(seconds: 2);
 
   Future<Map<String, String>> _getHeaders(Map<String, String>? extra) async {

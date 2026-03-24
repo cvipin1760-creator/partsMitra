@@ -80,9 +80,42 @@ class MyApp extends StatelessWidget {
       themeMode: tm,
       builder: (context, child) {
         final media = MediaQuery.of(context);
-        return MediaQuery(
+        final base = MediaQuery(
           data: media.copyWith(textScaler: TextScaler.linear(textScale)),
           child: child ?? const SizedBox.shrink(),
+        );
+        return Stack(
+          children: [
+            base,
+            if (NotificationService.hasPendingNavigation)
+              Container(
+                color: Colors.black45,
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 56,
+                        width: 56,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 4,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Opening from notification…',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         );
       },
       home: const AuthWrapper(),
@@ -133,16 +166,16 @@ class AuthWrapper extends StatelessWidget {
     // Initialize notifications
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final np = Provider.of<NotificationProvider>(context, listen: false);
-      if (!np.isConnected) {
-        np.init(authProvider.user!.roles.first, userId: authProvider.user!.id);
+      if (authProvider.user != null && !np.isConnected) {
+        final rolesString = authProvider.user!.roles.join(',');
+        final userId = authProvider.user!.id;
+
+        // This handles topic subscription, identity storage, WS connection, and fetching
+        np.init(rolesString, userId: userId);
+
+        showBatteryOptimizationPromptIfNeeded(context);
+        NotificationService.tryConsumePendingNavigation();
       }
-      showBatteryOptimizationPromptIfNeeded(context);
-      // Ensure topic subscription for all roles and identity remembered for token refresh
-      NotificationService.subscribeToTopicsForRoles(authProvider.user!.roles);
-      NotificationService.rememberIdentity(
-        authProvider.user!.roles.join(','),
-        userId: authProvider.user!.id,
-      );
     });
 
     if (authProvider.user!.roles.contains(Constants.roleRetailer)) {

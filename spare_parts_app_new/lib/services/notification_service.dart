@@ -16,6 +16,7 @@ class NotificationService {
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   static GlobalKey<NavigatorState>? _navKey;
   static final RemoteClient _remote = RemoteClient();
+  static Map<String, String?>? _pendingNav;
 
   static void configureNavigationKey(GlobalKey<NavigatorState> key) {
     _navKey = key;
@@ -74,16 +75,28 @@ class NotificationService {
       try {
         final prefs = await SharedPreferences.getInstance();
         final lastUserId = prefs.getInt('last_user_id');
-        final lastRole = prefs.getString('last_role');
+        final lastRolesJson = prefs.getString('last_roles');
+        final lastRoleLegacy = prefs.getString('last_role');
+        List<String> roles = [];
+        if (lastRolesJson != null && lastRolesJson.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(lastRolesJson);
+            if (decoded is List) {
+              roles = decoded.map((e) => e.toString()).toList();
+            }
+          } catch (_) {}
+        } else if (lastRoleLegacy != null && lastRoleLegacy.isNotEmpty) {
+          roles = lastRoleLegacy.split(',').map((e) => e.trim()).toList();
+        }
         if (lastUserId != null) {
           await updateTokenOnServer(lastUserId, token);
         }
-        if (lastRole != null && lastRole.isNotEmpty) {
-          await subscribeToTopicsForRole(lastRole);
+        if (roles.isNotEmpty) {
+          await subscribeToTopicsForRoles(roles);
         }
         if (kDebugMode) {
           debugPrint(
-              'FCM token refreshed and synced. Role=$lastRole User=$lastUserId');
+              'FCM token refreshed and synced. Roles=${roles.join(',')} User=$lastUserId');
         }
       } catch (e) {
         debugPrint('Failed handling token refresh: $e');
@@ -134,25 +147,21 @@ class NotificationService {
 
     // 4. Handle notification taps when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      if (_navKey != null) {
-        String? route = message.data['route'] ?? 'offers';
-        String? offerType = message.data['offerType'];
-        String? role = message.data['role'];
-        final String? orderId = message.data['orderId'];
-        final String? title =
-            message.data['title'] ?? message.notification?.title;
-        final String? msg =
-            message.data['message'] ?? message.notification?.body;
-        final String? imageUrl = message.data['imageUrl'];
-
-        _navigateByRoleThenOffers(role, offerType, route,
-            title: title, message: msg, imageUrl: imageUrl, orderId: orderId);
-      }
+      String? route = message.data['route'] ?? 'offers';
+      String? offerType = message.data['offerType'];
+      String? role = message.data['role'];
+      final String? orderId = message.data['orderId'];
+      final String? title =
+          message.data['title'] ?? message.notification?.title;
+      final String? msg = message.data['message'] ?? message.notification?.body;
+      final String? imageUrl = message.data['imageUrl'];
+      _queueOrNavigate(role, offerType, route,
+          title: title, message: msg, imageUrl: imageUrl, orderId: orderId);
     });
 
     // 5. If app was terminated and opened via notification
     final initialMessage = await _fcm.getInitialMessage();
-    if (initialMessage != null && _navKey != null) {
+    if (initialMessage != null) {
       String? route = initialMessage.data['route'] ?? 'offers';
       String? offerType = initialMessage.data['offerType'];
       String? role = initialMessage.data['role'];
@@ -163,10 +172,47 @@ class NotificationService {
           initialMessage.data['message'] ?? initialMessage.notification?.body;
       final String? imageUrl = initialMessage.data['imageUrl'];
 
-      _navigateByRoleThenOffers(role, offerType, route,
+      _queueOrNavigate(role, offerType, route,
           title: title, message: msg, imageUrl: imageUrl, orderId: orderId);
     }
   }
+
+  static void _queueOrNavigate(String? role, String? offerType, String? route,
+      {String? title, String? message, String? imageUrl, String? orderId}) {
+    final nav = _navKey?.currentState;
+    if (nav == null) {
+      _pendingNav = {
+        'role': role,
+        'offerType': offerType,
+        'route': route,
+        'title': title,
+        'message': message,
+        'imageUrl': imageUrl,
+        'orderId': orderId,
+      };
+      return;
+    }
+    _navigateByRoleThenOffers(role, offerType, route,
+        title: title, message: message, imageUrl: imageUrl, orderId: orderId);
+  }
+
+  static void tryConsumePendingNavigation() {
+    final nav = _navKey?.currentState;
+    if (nav == null || _pendingNav == null) return;
+    final p = _pendingNav!;
+    _pendingNav = null;
+    _navigateByRoleThenOffers(
+      p['role'],
+      p['offerType'],
+      p['route'],
+      title: p['title'],
+      message: p['message'],
+      imageUrl: p['imageUrl'],
+      orderId: p['orderId'],
+    );
+  }
+
+  static bool get hasPendingNavigation => _pendingNav != null;
 
   static Future<String?> getToken() async {
     try {
@@ -291,7 +337,8 @@ class NotificationService {
       targetRoute = 'offers';
     }
     if (role != null) {
-      final r = role.toUpperCase();
+      String r = role.toUpperCase();
+      if (r.startsWith('ROLE_')) r = r.substring(5);
       if (r == 'RETAILER') {
         nav.pushNamed('/dashboard/retailer', arguments: {
           'offerType': offerType,
@@ -351,6 +398,13 @@ class NotificationService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('last_role', role);
+      // Also store normalized roles array for multiple roles
+      final roles = role
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      await prefs.setString('last_roles', jsonEncode(roles));
       if (userId != null) {
         await prefs.setInt('last_user_id', userId);
       }
@@ -371,8 +425,18 @@ class NotificationService {
 
   static Future<void> subscribeToTopicsForRole(String role) async {
     try {
+      final r = role.trim();
+      if (r.contains(',')) {
+        final list = r
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+        await subscribeToTopicsForRoles(list);
+        return;
+      }
       await _fcm.subscribeToTopic('all-users');
-      await _fcm.subscribeToTopic('role-$role');
+      await _fcm.subscribeToTopic('role-$r');
     } catch (e) {
       debugPrint('Error subscribing to topics: $e');
     }

@@ -34,11 +34,11 @@ class NotificationProvider with ChangeNotifier {
     await _localNotifications.initialize(initializationSettings);
   }
 
-  void init(String role, {int? userId}) {
+  void init(String roles, {int? userId}) {
     if (_isConnected) return;
 
-    NotificationService.subscribeToTopicsForRole(role);
-    NotificationService.rememberIdentity(role, userId: userId);
+    NotificationService.subscribeToTopicsForRole(roles);
+    NotificationService.rememberIdentity(roles, userId: userId);
     _wsService.connect(
       (data) {
         _notifications.insert(0, data);
@@ -46,22 +46,22 @@ class NotificationProvider with ChangeNotifier {
         _showLocalNotification(data);
         notifyListeners();
       },
-      role: role,
+      role: roles,
       userId: userId,
     );
     _isConnected = true;
-    _fetchNotifications(role, userId: userId);
+    _fetchNotifications(roles, userId: userId);
   }
 
-  Future<void> refresh(String role, {int? userId}) async {
-    await _fetchNotifications(role, userId: userId);
+  Future<void> refresh(String roles, {int? userId}) async {
+    await _fetchNotifications(roles, userId: userId);
   }
 
   Future<void> _showLocalNotification(Map<String, dynamic> data) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'sparehub_notifications',
-      'SpareHub Notifications',
+      'spare_parts_channel',
+      'Spare Parts Notifications',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
@@ -78,8 +78,8 @@ class NotificationProvider with ChangeNotifier {
     );
   }
 
-  Future<void> _fetchNotifications(String role, {int? userId}) async {
-    final list = await _apiService.getMyNotifications(role, userId: userId);
+  Future<void> _fetchNotifications(String roles, {int? userId}) async {
+    final list = await _apiService.getMyNotifications(roles, userId: userId);
     _notifications = list;
     _unreadCount = await _apiService.getUnreadCount();
     if (!_initialBannerShown && _notifications.isNotEmpty) {

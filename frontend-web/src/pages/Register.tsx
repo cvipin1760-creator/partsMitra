@@ -169,9 +169,9 @@ const Register = () => {
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="mx-auto h-20 w-20 bg-primary-600 rounded-2xl flex items-center justify-center shadow-xl shadow-primary-200 mb-6"
+            className="mx-auto h-24 w-24 bg-white rounded-3xl flex items-center justify-center shadow-xl shadow-gray-200 mb-6 overflow-hidden border border-gray-100"
           >
-            <ShieldCheck size={40} className="text-white" />
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain p-2" />
           </motion.div>
           <h2 className="text-4xl font-black text-gray-900 tracking-tight">
             {t('reg.title')}

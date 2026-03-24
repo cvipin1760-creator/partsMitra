@@ -18,10 +18,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       if (auth.user != null) {
-        final role = auth.user!.roles.first;
+        final roles = auth.user!.roles.join(',');
         final userId = auth.user!.id;
         Provider.of<NotificationProvider>(context, listen: false)
-            .init(role, userId: userId);
+            .init(roles, userId: userId);
         Provider.of<NotificationProvider>(context, listen: false)
             .markAllAsRead();
       }
@@ -39,10 +39,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
             onPressed: () {
               final auth = Provider.of<AuthProvider>(context, listen: false);
               if (auth.user != null) {
-                final role = auth.user!.roles.first;
+                final roles = auth.user!.roles.join(',');
                 final userId = auth.user!.id;
                 Provider.of<NotificationProvider>(context, listen: false)
-                    .refresh(role, userId: userId);
+                    .refresh(roles, userId: userId);
               }
             },
           ),
@@ -63,11 +63,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
               final n = notifications[index];
               final title = n['title'] ?? 'No Title';
               final body = n['message'] ?? n['body'] ?? 'No Message';
-              final dateStr = n['createdAt'] ?? '';
-              final date = dateStr.isNotEmpty
-                  ? DateFormat('MMM dd, yyyy HH:mm')
-                      .format(DateTime.parse(dateStr))
-                  : 'Unknown date';
+              final rawDateStr =
+                  (n['createdAt'] ?? n['created_at'] ?? '').toString();
+              String date;
+              if (rawDateStr.isNotEmpty) {
+                DateTime? dt = DateTime.tryParse(rawDateStr);
+                if (dt == null) {
+                  // Fallback: if server sent milliseconds since epoch
+                  try {
+                    final millis = int.parse(rawDateStr);
+                    dt = DateTime.fromMillisecondsSinceEpoch(millis,
+                        isUtc: true);
+                  } catch (_) {}
+                }
+                if (dt != null) {
+                  final local = dt.toLocal();
+                  date = DateFormat('MMM dd, yyyy • hh:mm a').format(local);
+                } else {
+                  date = 'Unknown date';
+                }
+              } else {
+                date =
+                    DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.now());
+              }
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),

@@ -47,6 +47,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       TextEditingController();
   final TextEditingController _loginBannerButtonTextController =
       TextEditingController();
+  final TextEditingController _loginBannerCooldownController =
+      TextEditingController();
   final Map<String, bool> _allowedRoles = {
     Constants.roleMechanic: true,
     Constants.roleRetailer: true,
@@ -94,6 +96,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     _loginBannerTextController.dispose();
     _loginBannerImageUrlController.dispose();
     _loginBannerButtonTextController.dispose();
+    _loginBannerCooldownController.dispose();
     super.dispose();
   }
 
@@ -159,6 +162,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             (remote['LOGIN_BANNER_SHOW_BUTTON'] ?? 'false') == 'true';
         _loginBannerButtonTextController.text =
             remote['LOGIN_BANNER_BUTTON_TEXT'] ?? 'Check Offers';
+        _loginBannerCooldownController.text =
+            remote['LOGIN_BANNER_COOLDOWN_HOURS'] ?? '24';
       });
     }
   }
@@ -192,6 +197,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       'LOGIN_BANNER_IMAGE_URL': _loginBannerImageUrlController.text,
       'LOGIN_BANNER_SHOW_BUTTON': _loginBannerShowButton ? 'true' : 'false',
       'LOGIN_BANNER_BUTTON_TEXT': _loginBannerButtonTextController.text,
+      'LOGIN_BANNER_COOLDOWN_HOURS': _loginBannerCooldownController.text,
     };
 
     for (var entry in remoteMap.entries) {
@@ -438,6 +444,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 if (_loginBannerShowButton)
                   _buildTextField('Button Text',
                       _loginBannerButtonTextController, 'e.g., View Deals'),
+                _buildTextField('Banner Cooldown (hours)',
+                    _loginBannerCooldownController, 'e.g., 24',
+                    keyboardType: TextInputType.number),
                 const Divider(),
                 const SectionHeader(
                     title: 'Loyalty & Points',
