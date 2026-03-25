@@ -38,13 +38,13 @@ class BillingService {
 
     // Fetch business settings
     final businessName =
-        SettingsService.getCachedRemoteSetting('BUSINESS_NAME', 'SpareHub');
+        SettingsService.getCachedRemoteSetting('BUSINESS_NAME', 'Parts Mitra');
     final businessAddress = SettingsService.getCachedRemoteSetting(
         'BUSINESS_ADDRESS', '123, Auto Parts Market, Industrial Area');
     final businessPhone = SettingsService.getCachedRemoteSetting(
         'BUSINESS_PHONE', '+91 9876543210');
     final businessEmail = SettingsService.getCachedRemoteSetting(
-        'BUSINESS_EMAIL', 'info@sparehub.com');
+        'BUSINESS_EMAIL', 'info@partsmitra.com');
     // final gstNumber =
     //     SettingsService.getCachedRemoteSetting('GST_NUMBER', 'GSTIN: 22AAAAA0000A1Z5');
 

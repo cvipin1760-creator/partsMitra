@@ -347,9 +347,10 @@ public class OrderService {
                 User customer = order.getCustomer();
                 customer.setPoints(customer.getPoints() + pointsEarned);
                 userRepository.save(customer);
+                
                 order.setPointsEarned(pointsEarned);
                 
-                System.out.println("Awarded " + pointsEarned + " points to user " + customer.getId() + " for order " + orderId);
+                System.out.println("Awarded " + pointsEarned + " points to user " + customer.getId() + " for order " + orderId + " by Parts Mitra");
             }
         }
 

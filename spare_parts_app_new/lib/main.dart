@@ -73,7 +73,7 @@ class MyApp extends StatelessWidget {
     final textScale = tprov.textScale;
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      title: 'Spares Hub',
+      title: 'Parts Mitra',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightWithSeed(seed),
       darkTheme: AppTheme.darkWithSeed(seed),
@@ -118,7 +118,7 @@ class MyApp extends StatelessWidget {
           ],
         );
       },
-      home: const AuthWrapper(),
+      home: const InitialLoadingWrapper(),
       routes: {
         '/forgot-password': (context) => const ForgotPasswordScreen(),
         '/reset-password': (context) {
@@ -192,5 +192,63 @@ class AuthWrapper extends StatelessWidget {
     } else {
       return const LoginScreen();
     }
+  }
+}
+
+class InitialLoadingWrapper extends StatefulWidget {
+  const InitialLoadingWrapper({super.key});
+
+  @override
+  State<InitialLoadingWrapper> createState() => _InitialLoadingWrapperState();
+}
+
+class _InitialLoadingWrapperState extends State<InitialLoadingWrapper> {
+  late Future<void> _settingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsFuture = SettingsService.preloadRemoteSettings();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _settingsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          // The service handles its own errors and falls back to cache,
+          // so we can always proceed.
+          return const AuthWrapper();
+        } else {
+          // Show a loading screen while settings are being fetched.
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset('assets/images/logo.png',
+                      width: 120, height: 120),
+                  const SizedBox(height: 30),
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.redAccent),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Connecting to server...',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                  const Text(
+                    'This might take a moment.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
+    );
   }
 }

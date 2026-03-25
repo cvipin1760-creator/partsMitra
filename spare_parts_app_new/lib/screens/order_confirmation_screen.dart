@@ -42,7 +42,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Thanks for ordering with SpareHub — smart choice using your points.',
+                      'Thanks for ordering with Parts Mitra — smart choice using your points.',
                       style: TextStyle(
                         color: Color(0xFF2E7D32),
                         fontWeight: FontWeight.w600,

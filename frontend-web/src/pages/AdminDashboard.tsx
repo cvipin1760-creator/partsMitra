@@ -97,6 +97,70 @@ const AdminDashboard = () => {
   const [pointsAmount, setPointsAmount] = useState(0);
   const [pointsOperation, setPointsOperation] = useState('ADD');
 
+  const [orderRequests, setOrderRequests] = useState<any[]>([]);
+  const [fetchingRequests, setFetchingRequests] = useState(false);
+
+  const [billingUser, setBillingUser] = useState<any>(null);
+  const [billingItems, setBillingItems] = useState<any[]>([]);
+  const [billingSearchTerm, setBillingSearchTerm] = useState('');
+  const [billingSearchResults, setBillingSearchResults] = useState<any[]>([]);
+
+  const addProductToBill = (product: any) => {
+    const existing = billingItems.find(i => i.id === product.id);
+    if (existing) {
+      setBillingItems(billingItems.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
+    } else {
+      setBillingItems([...billingItems, { ...product, quantity: 1 }]);
+    }
+    setBillingSearchTerm('');
+    setBillingSearchResults([]);
+  };
+
+  const removeProductFromBill = (productId: number) => {
+    setBillingItems(billingItems.filter(i => i.id !== productId));
+  };
+
+  const updateBillQuantity = (productId: number, qty: number) => {
+    if (qty <= 0) {
+      removeProductFromBill(productId);
+    } else {
+      setBillingItems(billingItems.map(i => i.id === productId ? { ...i, quantity: qty } : i));
+    }
+  };
+
+  const generateInvoice = async () => {
+    if (!billingUser || billingItems.length === 0) return;
+    try {
+      const orderItems = billingItems.map(i => ({
+        productId: i.id,
+        productName: i.name,
+        quantity: i.quantity,
+        price: i.sellingPrice
+      }));
+      await api.post(`/admin/orders/create-admin-order?customerId=${billingUser.id}&customerName=${billingUser.name}`, orderItems);
+      alert('Invoice generated and reflected in customer orders!');
+      setBillingUser(null);
+      setBillingItems([]);
+      fetchOrders();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate invoice');
+    }
+  };
+
+  const handleBillSearch = (term: string) => {
+    setBillingSearchTerm(term);
+    if (term.length >= 2) {
+      const results = products.filter(p => 
+        p.name.toLowerCase().includes(term.toLowerCase()) || 
+        p.partNumber.toLowerCase().includes(term.toLowerCase())
+      );
+      setBillingSearchResults(results.slice(0, 5));
+    } else {
+      setBillingSearchResults([]);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -107,7 +171,8 @@ const AdminDashboard = () => {
           fetchProducts(),
           fetchCategories(),
           fetchDeletedItems(),
-          fetchSettings()
+          fetchSettings(),
+          fetchOrderRequests()
         ]);
       } catch (err) {
         console.error("Initial fetch failed:", err);
@@ -117,6 +182,38 @@ const AdminDashboard = () => {
     };
     init();
   }, []);
+
+  const fetchOrderRequests = async () => {
+    try {
+      setFetchingRequests(true);
+      const res = await api.get('/admin/order-requests');
+      setOrderRequests(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFetchingRequests(false);
+    }
+  };
+
+  const updateRequestStatus = async (requestId: number, status: string) => {
+    try {
+      await api.put(`/admin/order-requests/${requestId}/status?status=${status}`);
+      fetchOrderRequests();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update request status');
+    }
+  };
+
+  const assignRequestToStaff = async (requestId: number, staffId: number) => {
+    try {
+      await api.put(`/admin/order-requests/${requestId}/assign?staffId=${staffId}`);
+      fetchOrderRequests();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to assign staff');
+    }
+  };
 
   useEffect(() => {
     const fetchSales = async () => {
@@ -280,7 +377,7 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    // WebSocket setup for new orders
+    // WebSocket setup for new orders and notifications
     const socketBaseUrl = API_BASE_URL.endsWith('/api')
       ? API_BASE_URL.substring(0, API_BASE_URL.length - 4)
       : API_BASE_URL;
@@ -290,10 +387,25 @@ const AdminDashboard = () => {
     stompClient.debug = () => {}; // Disable debug logs
 
     stompClient.connect({}, () => {
+      // 1. Subscribe to admin order updates
       stompClient.subscribe('/topic/admin/orders', () => {
         playNotification();
         fetchOrders();
       });
+
+      // 2. Subscribe to role-specific notifications for the current user
+      if (currentUser?.roles) {
+        currentUser.roles.forEach((role: string) => {
+          stompClient.subscribe(`/topic/notifications/${role}`, (frame: any) => {
+            if (frame.body) {
+              const data = JSON.parse(frame.body);
+              console.log('Received notification for role:', role, data);
+              playNotification();
+              // You could also add logic here to show a toast or update a notification list
+            }
+          });
+        });
+      }
     }, (error) => {
       console.error('WebSocket error:', error);
     });
@@ -303,7 +415,7 @@ const AdminDashboard = () => {
         stompClient.disconnect(() => {});
       }
     };
-  }, [playNotification, fetchOrders]);
+  }, [playNotification, fetchOrders, currentUser?.roles]);
 
   const fetchCategories = async () => {
     try {
@@ -824,11 +936,14 @@ const AdminDashboard = () => {
         {[
           { id: 'users', label: 'Users', icon: Users },
           { id: 'orders', label: 'Transactions', icon: ShoppingBag },
+          { id: 'requests', label: 'Order Requests', icon: MessageSquare },
+          { id: 'invoicing', label: 'Invoicing', icon: FileText },
           { id: 'cashback', label: 'Cashback Points', icon: Star },
           { id: 'products', label: 'Inventory', icon: Package },
           { id: 'deliveries', label: 'Deliveries', icon: Truck },
           { id: 'recycle', label: 'Recycle Bin', icon: Trash2 },
           { id: 'categories', label: 'Categories', icon: Plus },
+          { id: 'reports', label: 'Reports', icon: BarChart2 },
           { id: 'settings', label: 'Settings', icon: Settings },
         ].map((tab) => (
           <button
@@ -1582,6 +1697,222 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'invoicing' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-widest text-xs">1. Select Customer</h3>
+              <select 
+                className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
+                value={billingUser?.id || ''}
+                onChange={(e) => setBillingUser(users.find(u => u.id === parseInt(e.target.value)))}
+              >
+                <option value="">Choose a customer...</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.roles?.join(', ') || 'User'})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-widest text-xs">2. Add Products</h3>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search products by name or part #..."
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition"
+                  value={billingSearchTerm}
+                  onChange={(e) => handleBillSearch(e.target.value)}
+                />
+                {billingSearchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-10 overflow-hidden">
+                    {billingSearchResults.map(p => (
+                      <div 
+                        key={p.id} 
+                        className="p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+                        onClick={() => addProductToBill(p)}
+                      >
+                        <div>
+                          <div className="font-bold text-sm text-gray-900">{p.name}</div>
+                          <div className="text-[10px] text-gray-500">{p.partNumber}</div>
+                        </div>
+                        <div className="font-black text-primary-600 text-sm">₹{p.sellingPrice}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col min-h-[500px]">
+            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-widest text-xs">3. Current Bill</h3>
+            {billingUser && (
+              <div className="mb-4 p-3 bg-primary-50 rounded-xl border border-primary-100 flex justify-between items-center">
+                <div>
+                  <div className="text-xs font-black text-primary-800 uppercase">Billing For</div>
+                  <div className="font-bold text-primary-900">{billingUser.name}</div>
+                </div>
+                <button onClick={() => setBillingUser(null)} className="text-primary-600 hover:text-primary-800 transition">
+                  <RotateCcw size={16} />
+                </button>
+              </div>
+            )}
+            
+            <div className="flex-1 overflow-y-auto">
+              {billingItems.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                  <ShoppingBag size={48} className="mb-2 opacity-20" />
+                  <p className="font-bold">No items added yet</p>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead>
+                    <tr>
+                      <th className="py-2 text-left text-[10px] font-black text-gray-400 uppercase">Item</th>
+                      <th className="py-2 text-center text-[10px] font-black text-gray-400 uppercase">Qty</th>
+                      <th className="py-2 text-right text-[10px] font-black text-gray-400 uppercase">Total</th>
+                      <th className="py-2 text-right"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {billingItems.map(item => (
+                      <tr key={item.id}>
+                        <td className="py-3">
+                          <div className="font-bold text-sm text-gray-900">{item.name}</div>
+                          <div className="text-[10px] text-gray-500">₹{item.sellingPrice}</div>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => updateBillQuantity(item.id, item.quantity - 1)} className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">-</button>
+                            <span className="font-bold text-sm">{item.quantity}</span>
+                            <button onClick={() => updateBillQuantity(item.id, item.quantity + 1)} className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">+</button>
+                          </div>
+                        </td>
+                        <td className="py-3 text-right font-black text-sm text-gray-900">₹{(item.sellingPrice * item.quantity).toFixed(2)}</td>
+                        <td className="py-3 text-right">
+                          <button onClick={() => removeProductFromBill(item.id)} className="text-red-500 hover:text-red-700">
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">Total Amount</span>
+                <span className="text-2xl font-black text-gray-900">₹{billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0).toFixed(2)}</span>
+              </div>
+              <button
+                disabled={!billingUser || billingItems.length === 0}
+                onClick={generateInvoice}
+                className="w-full bg-primary-600 text-white py-4 rounded-xl font-black shadow-lg shadow-primary-100 hover:bg-primary-700 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+              >
+                <FileText size={20} />
+                Generate Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'requests' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Custom Order Requests</h2>
+            <button onClick={fetchOrderRequests} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+              <RotateCcw size={20} className={fetchingRequests ? 'animate-spin' : ''} />
+            </button>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Request Details</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Assigned Staff</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {orderRequests.map((req) => (
+                  <tr key={req.id} className="hover:bg-gray-50/50 transition">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-bold text-gray-900">{req.text}</div>
+                      {req.photoPath && (
+                        <a href={getImageUrl(req.photoPath)} target="_blank" rel="noreferrer" className="text-xs text-primary-600 hover:underline">View Photo</a>
+                      )}
+                      <div className="text-[10px] text-gray-400">{new Date(req.createdAt).toLocaleString()}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.customerName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-[10px] font-black uppercase rounded-lg ${
+                        req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                        req.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select
+                        value={req.assignedStaffId || ''}
+                        onChange={(e) => assignRequestToStaff(req.id, parseInt(e.target.value))}
+                        className="text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg p-1"
+                      >
+                        <option value="">Unassigned</option>
+                        {users.filter(u => (u.role?.name || u.role) === ROLE_STAFF).map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex gap-2 justify-center">
+                        <button onClick={() => updateRequestStatus(req.id, 'PROCESSING')} className="text-xs font-bold text-blue-600 hover:underline">Process</button>
+                        <button onClick={() => updateRequestStatus(req.id, 'COMPLETED')} className="text-xs font-bold text-green-600 hover:underline">Complete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'reports' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-100">
+              <h3 className="text-lg font-bold mb-2">Daily Performance</h3>
+              <div className="text-3xl font-black mb-1">₹{salesReport?.totalSales?.toLocaleString() || '0'}</div>
+              <div className="text-sm opacity-80">{salesReport?.totalOrders || '0'} Orders Today</div>
+            </div>
+            {/* You could fetch other periods here, but for now we reuse the report state */}
+            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-2xl text-white shadow-lg shadow-indigo-100">
+              <h3 className="text-lg font-bold mb-2">Active Inventory</h3>
+              <div className="text-3xl font-black mb-1">{products.length}</div>
+              <div className="text-sm opacity-80">{products.filter(p => p.stock <= 5).length} Low Stock Items</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white shadow-lg shadow-purple-100">
+              <h3 className="text-lg font-bold mb-2">User Growth</h3>
+              <div className="text-3xl font-black mb-1">{users.length}</div>
+              <div className="text-sm opacity-80">{users.filter(u => u.status === 'PENDING').length} Pending Approvals</div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-4">Detailed Reports</h3>
+            <p className="text-sm text-gray-500">More charts and analytics coming soon to the web panel to match the mobile experience.</p>
           </div>
         </div>
       )}

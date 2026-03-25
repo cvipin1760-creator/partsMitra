@@ -86,7 +86,7 @@ const App: React.FC = () => {
           <div className="flex items-center justify-between w-full md:w-auto">
             <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary-600">
               <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
-              SpareHub
+              Parts Mitra
             </Link>
           </div>
 
