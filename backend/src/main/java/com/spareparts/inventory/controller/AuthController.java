@@ -306,15 +306,30 @@ public class AuthController {
                     .body(new MessageResponse("Error: Email is already in use!"));
         }
 
-        // Verify OTP from DB
-        Otp storedOtp = otpRepository.findTopByEmailOrderByExpiryTimeDesc(signUpRequest.getEmail()).orElse(null);
-        if (storedOtp == null || !storedOtp.getOtp().equals(signUpRequest.getOtp())) {
-            System.out.println("Signup OTP Verification Failed for " + signUpRequest.getEmail() + ". Received: " + signUpRequest.getOtp() + ", Stored: " + (storedOtp != null ? storedOtp.getOtp() : "null"));
-            return ResponseEntity.badRequest().body(new MessageResponse("Invalid OTP."));
-        }
+        // Verify OTP (skip if firebaseToken is present)
+        if (signUpRequest.getFirebaseToken() != null && !signUpRequest.getFirebaseToken().isEmpty()) {
+            try {
+                // 1. Verify the token with Firebase
+                FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(signUpRequest.getFirebaseToken());
+                String verifiedPhone = (String) decodedToken.getClaims().get("phone_number");
+                // Optional: verify that the verifiedPhone matches the phone from the request
+            } catch (Exception e) {
+                return ResponseEntity.status(401).body(new MessageResponse("Firebase verification failed: " + e.getMessage()));
+            }
+        } else {
+            // Traditional OTP verification from DB
+            Otp storedOtp = otpRepository.findTopByEmailOrderByExpiryTimeDesc(signUpRequest.getEmail()).orElse(null);
+            if (storedOtp == null || !storedOtp.getOtp().equals(signUpRequest.getOtp())) {
+                System.out.println("Signup OTP Verification Failed for " + signUpRequest.getEmail() + ". Received: " + signUpRequest.getOtp() + ", Stored: " + (storedOtp != null ? storedOtp.getOtp() : "null"));
+                return ResponseEntity.badRequest().body(new MessageResponse("Invalid OTP."));
+            }
 
-        if (storedOtp.isExpired()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("OTP has expired."));
+            if (storedOtp.isExpired()) {
+                return ResponseEntity.badRequest().body(new MessageResponse("OTP has expired."));
+            }
+            
+            // Remove OTP after use
+            otpRepository.deleteByEmail(signUpRequest.getEmail());
         }
 
         // Create new user's account
@@ -351,9 +366,6 @@ public class AuthController {
 
         user.setRole(role);
         userRepository.save(user);
-
-        // Remove OTP after use
-        otpRepository.deleteByEmail(signUpRequest.getEmail());
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully! Please wait for admin approval."));
     }

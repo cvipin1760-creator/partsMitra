@@ -29,4 +29,6 @@ public class SignupRequest {
     private String role; // admin, wholesaler, retailer, mechanic
     
     private String otp;
+    
+    private String firebaseToken;
 }

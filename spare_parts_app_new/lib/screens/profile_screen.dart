@@ -474,7 +474,13 @@ class ProfileScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => authProvider.logout(),
+                      onPressed: () async {
+                        await authProvider.logout();
+                        if (context.mounted) {
+                          Navigator.of(context)
+                              .pushNamedAndRemoveUntil('/', (route) => false);
+                        }
+                      },
                       icon: const Icon(Icons.logout_rounded),
                       label: const Text('LOGOUT ACCOUNT'),
                       style: OutlinedButton.styleFrom(

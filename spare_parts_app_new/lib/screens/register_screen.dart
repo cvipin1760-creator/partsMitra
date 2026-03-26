@@ -24,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _addressController = TextEditingController();
   String _selectedRole = Constants.roleMechanic;
+  String _selectedCountryCode = '+91';
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _isEmailRegistration = true; // Toggle between Email and Mobile
@@ -218,26 +219,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
       debugPrint('RegisterScreen: Starting registration process...');
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+      final fullPhone = _isEmailRegistration
+          ? phone
+          : (_selectedCountryCode + phone.replaceAll(RegExp(r'\D'), ''));
+
       final registrationData = {
         'name': name,
         'email': _isEmailRegistration ? email : '$phone@spares.hub',
         'password': password,
         'role': _selectedRole,
-        'phone': phone,
+        'phone': fullPhone,
         'address': address,
         'latitude': _latitude,
         'longitude': _longitude,
       };
 
-      final target = _isEmailRegistration ? email : phone;
-      debugPrint('RegisterScreen: Sending OTP to $target...');
+      final target = _isEmailRegistration ? email : fullPhone;
+      debugPrint('RegisterScreen: Starting verification for $target...');
 
       if (!_isEmailRegistration) {
-        // Firebase Phone Auth for mobile registration
+        // ONLY Firebase Phone Auth for mobile registration
         await authProvider.verifyPhone(
           target,
           onCodeSent: (verId) {
             if (mounted) {
+              setState(() => _isLoading = false);
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => OtpVerificationScreen(
@@ -251,13 +257,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             }
           },
           onError: (err) {
-            _showFeedback('Firebase Phone Auth failed: $err', isError: true);
             setState(() => _isLoading = false);
+            _showFeedback('Firebase Phone Auth failed: $err', isError: true);
           },
         );
         return;
       }
 
+      // For email registration, we still use the provider's sendOtp method
       final source = await authProvider.sendOtp(target, registrationData);
       debugPrint('RegisterScreen: OTP source: $source');
 
@@ -419,11 +426,73 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               keyboardType: TextInputType.emailAddress,
                             )
                           else
-                            _buildTextField(
-                              controller: _phoneController,
-                              label: 'Mobile Number*',
-                              icon: Icons.phone_android_outlined,
-                              keyboardType: TextInputType.phone,
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 12),
+                                    child: Icon(Icons.phone_android_outlined,
+                                        color: Colors.green.shade600, size: 22),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedCountryCode,
+                                      style: TextStyle(
+                                          color: Colors.grey.shade800,
+                                          fontWeight: FontWeight.bold),
+                                      items: [
+                                        '+91',
+                                        '+1',
+                                        '+44',
+                                        '+971',
+                                        '+61',
+                                        '+81',
+                                        '+92',
+                                        '+880',
+                                        '+94',
+                                        '+65'
+                                      ]
+                                          .map((code) =>
+                                              DropdownMenuItem<String>(
+                                                value: code,
+                                                child: Text(code),
+                                              ))
+                                          .toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() {
+                                            _selectedCountryCode = val;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const VerticalDivider(width: 1),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      style: const TextStyle(fontSize: 16),
+                                      decoration: const InputDecoration(
+                                        labelText: 'Mobile Number*',
+                                        labelStyle: TextStyle(
+                                            color: Colors.grey, fontSize: 14),
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           const SizedBox(height: 16),
                           _buildTextField(

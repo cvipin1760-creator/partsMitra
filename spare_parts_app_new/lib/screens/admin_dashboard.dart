@@ -389,7 +389,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             IconButton(
               icon: const Icon(Icons.logout),
-              onPressed: () => auth.logout(),
+              onPressed: () async {
+                await auth.logout();
+                if (mounted) {
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/', (route) => false);
+                }
+              },
             ),
           ],
         ),
@@ -547,9 +553,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   leading: const Icon(Icons.logout, color: Colors.red),
                   title:
                       const Text('Logout', style: TextStyle(color: Colors.red)),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    auth.logout();
+                    await auth.logout();
+                    if (mounted) {
+                      Navigator.of(context)
+                          .pushNamedAndRemoveUntil('/', (route) => false);
+                    }
                   },
                 ),
               ],

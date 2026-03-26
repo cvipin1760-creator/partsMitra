@@ -143,6 +143,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 8,
+                                color: Color.fromARGB(221, 184, 46, 46),
                               ),
                               decoration: InputDecoration(
                                 hintText: '000000',

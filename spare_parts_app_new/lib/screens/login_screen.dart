@@ -10,6 +10,7 @@ import '../providers/language_provider.dart';
 import '../utils/constants.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import 'otp_verification_screen.dart';
 import '../services/sso_mobile.dart'
     if (dart.library.html) '../services/sso_web.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -33,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isOtpLogin = false;
   bool _otpSent = false;
+  String _selectedCountryCode = '+91';
   String? _otpSource; // 'server' or 'email'
 
   @override
@@ -220,13 +222,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    final identifier = _emailController.text.trim();
-    if (identifier.isEmpty) {
+    final rawIdentifier = _emailController.text.trim();
+    if (rawIdentifier.isEmpty) {
       _showFeedback('Please enter your email or mobile number.', isError: true);
       return;
     }
 
-    final isEmail = identifier.contains('@');
+    final isEmail = rawIdentifier.contains('@');
+    final identifier = isEmail
+        ? rawIdentifier
+        : (_selectedCountryCode + rawIdentifier.replaceAll(RegExp(r'\D'), ''));
+
     if (isEmail) {
       final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
       if (!emailRegex.hasMatch(identifier)) {
@@ -234,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
     } else {
-      if (identifier.length < 10) {
+      if (rawIdentifier.length < 10) {
         _showFeedback('Please enter a valid mobile number.', isError: true);
         return;
       }
@@ -318,13 +324,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleSendOtp() async {
-    final identifier = _emailController.text.trim();
-    if (identifier.isEmpty) {
+    final rawIdentifier = _emailController.text.trim();
+    if (rawIdentifier.isEmpty) {
       _showFeedback('Please enter your email or mobile number.', isError: true);
       return;
     }
 
-    final isEmail = identifier.contains('@');
+    final isEmail = rawIdentifier.contains('@');
+    final identifier = isEmail
+        ? rawIdentifier
+        : (_selectedCountryCode + rawIdentifier.replaceAll(RegExp(r'\D'), ''));
+
     if (isEmail) {
       final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
       if (!emailRegex.hasMatch(identifier)) {
@@ -332,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
     } else {
-      if (identifier.length < 10) {
+      if (rawIdentifier.length < 10) {
         _showFeedback('Please enter a valid mobile number.', isError: true);
         return;
       }
@@ -343,268 +353,88 @@ class _LoginScreenState extends State<LoginScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       if (!isEmail) {
-        // Firebase Phone Auth
+        // ONLY Firebase Phone Auth for mobile login
         await authProvider.verifyPhone(
           identifier,
           onCodeSent: (verId) {
-            setState(() => _otpSource = 'firebase');
-            setState(() => _otpSent = true);
+            setState(() {
+              _otpSource = 'firebase';
+              _otpSent = true;
+              _isLoading = false;
+            });
             _showFeedback('OTP sent to your phone via Firebase.');
             _promptEnterOtp(identifier, isFirebase: true);
           },
           onError: (err) {
+            setState(() => _isLoading = false);
             _showFeedback('Firebase Phone Auth failed: $err', isError: true);
           },
         );
         return;
       }
 
-      // For email login, we don't send registrationData, so purpose becomes 'login'
+      // For email login, we still use the provider's sendOtp method
       final source = await authProvider.sendOtp(identifier, {});
-      setState(() => _otpSource = source);
-      setState(() => _otpSent = true);
-      final via = source == 'server' ? 'SMS/Server' : 'Email';
-      _showFeedback('OTP sent via $via.');
-      if (source != 'server' && Constants.useRemote) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ScaffoldMessenger.of(context).clearMaterialBanners();
-          ScaffoldMessenger.of(context).showMaterialBanner(
-            MaterialBanner(
-              content: const Text(
-                  'If email OTP does not arrive, try logging in with your phone number (Firebase) or ask admin to enable local OTP temporarily.'),
-              leading: const Icon(Icons.info_outline),
-              actions: [
-                TextButton(
-                  onPressed: () =>
-                      ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
-                  child: const Text('Dismiss'),
-                ),
-              ],
-              backgroundColor: Colors.orange.shade50,
-            ),
-          );
-        });
-      }
+      setState(() {
+        _otpSource = source;
+        _otpSent = true;
+      });
+      _showFeedback('OTP sent via Email.');
       _promptEnterOtp(identifier);
     } catch (e) {
       _showFeedback('Failed to send OTP: $e', isError: true);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).clearMaterialBanners();
-        ScaffoldMessenger.of(context).showMaterialBanner(
-          MaterialBanner(
-            content: const Text(
-                'Email delivery seems down. Use phone OTP (enter mobile) or ask admin to enable local OTP.'),
-            leading: const Icon(Icons.report_gmailerrorred_outlined),
-            actions: [
-              TextButton(
-                onPressed: () =>
-                    ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
-                child: const Text('Dismiss'),
-              ),
-            ],
-            backgroundColor: Colors.orange.shade50,
-          ),
-        );
-      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _promptEnterOtp(String identifier, {bool isFirebase = false}) {
-    final tempOtpController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  void _promptEnterOtp(String identifier, {bool isFirebase = false}) async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => OtpVerificationScreen(
+          email: identifier,
+          isFirebase: isFirebase,
+        ),
       ),
-      builder: (ctx) {
-        bool verifying = false;
-        return StatefulBuilder(
-          builder: (ctx, setSheet) => Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Enter OTP to Login',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (_otpSource != null)
-                      Text(
-                        _otpSource == 'server'
-                            ? 'via server'
-                            : (_otpSource == 'firebase'
-                                ? 'via Firebase'
-                                : 'via email'),
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: tempOtpController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(6),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: '6-Digit OTP',
-                    border: OutlineInputBorder(),
-                    counterText: '', // hide counter to avoid narrow overflows
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: verifying
-                            ? null
-                            : () async {
-                                final ap = Provider.of<AuthProvider>(context,
-                                    listen: false);
-                                if (isFirebase) {
-                                  await ap.verifyPhone(
-                                    identifier,
-                                    onCodeSent: (verId) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content:
-                                                Text('OTP resent via Firebase'),
-                                            duration: Duration(seconds: 2),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    onError: (err) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content:
-                                                  Text('Resend failed: $err')),
-                                        );
-                                      }
-                                    },
-                                  );
-                                } else {
-                                  // Purpose: login
-                                  final src = await ap.sendOtp(identifier, {});
-                                  setSheet(() => _otpSource = src);
-                                  final via =
-                                      src == 'server' ? 'SMS/Server' : 'Email';
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('OTP resent via $via'),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                        child: const Text('Resend'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: verifying
-                            ? null
-                            : () async {
-                                final otp = tempOtpController.text.trim();
-                                if (otp.length != 6) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Please enter a valid 6-digit OTP'),
-                                      ),
-                                    );
-                                  }
-                                  return;
-                                }
-                                setSheet(() => verifying = true);
-                                try {
-                                  final ap = Provider.of<AuthProvider>(context,
-                                      listen: false);
-                                  bool ok = false;
-                                  if (isFirebase) {
-                                    ok = await ap.loginWithPhoneCode(
-                                        otp, identifier);
-                                  } else {
-                                    ok = await ap.loginWithOtp(identifier, otp);
-                                  }
-
-                                  if (ok && mounted) {
-                                    Navigator.pop(ctx); // Close sheet
-                                    _showFeedback('Login successful!');
-                                    _navigateToDashboard();
-                                  } else {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                              'Invalid OTP. Please try again.'),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content:
-                                              Text('OTP login failed: $e')),
-                                    );
-                                  }
-                                } finally {
-                                  setSheet(() => verifying = false);
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: verifying
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Verify & Login'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
+
+    if (result != null && result.length == 6) {
+      _handleOtpLogin(identifier, result, isFirebase: isFirebase);
+    }
+  }
+
+  void _handleOtpLogin(String identifier, String otp,
+      {bool isFirebase = false}) async {
+    setState(() => _isLoading = true);
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      bool success = false;
+
+      if (isFirebase) {
+        success = await authProvider.loginWithPhoneCode(otp, identifier);
+      } else {
+        success = await authProvider.loginWithOtp(identifier, otp);
+      }
+
+      if (success) {
+        if (mounted) {
+          final userName = authProvider.user?.name ?? 'User';
+          _showFeedback('Welcome $userName! Login successful.');
+          _navigateToDashboard();
+        }
+      } else {
+        _showFeedback(
+          isFirebase
+              ? 'Invalid phone OTP. Please try again.'
+              : 'Invalid OTP. Please try again.',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      _showFeedback(e.toString(), isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handleGoogleSignIn() async {
@@ -786,11 +616,79 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 32),
 
                           // Form Fields
-                          _buildTextField(
-                            controller: _emailController,
-                            label: 'Email or Mobile Number',
-                            icon: Icons.person_outline,
-                            keyboardType: TextInputType.text,
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                if (!_emailController.text.contains('@') &&
+                                    _emailController.text.isNotEmpty &&
+                                    RegExp(r'^\d+$').hasMatch(
+                                        _emailController.text.trim())) ...[
+                                  const SizedBox(width: 12),
+                                  DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedCountryCode,
+                                      style: TextStyle(
+                                          color: Colors.grey.shade800,
+                                          fontWeight: FontWeight.bold),
+                                      items: [
+                                        '+91',
+                                        '+1',
+                                        '+44',
+                                        '+971',
+                                        '+61',
+                                        '+81',
+                                        '+92',
+                                        '+880',
+                                        '+94',
+                                        '+65'
+                                      ]
+                                          .map((code) =>
+                                              DropdownMenuItem<String>(
+                                                value: code,
+                                                child: Text(code),
+                                              ))
+                                          .toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() {
+                                            _selectedCountryCode = val;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const VerticalDivider(width: 1),
+                                ],
+                                Expanded(
+                                  child: TextField(
+                                    controller: _emailController,
+                                    onChanged: (v) => setState(() {}),
+                                    decoration: InputDecoration(
+                                      labelText: 'Email or Mobile Number',
+                                      prefixIcon: _emailController.text
+                                                  .contains('@') ||
+                                              _emailController.text.isEmpty ||
+                                              !RegExp(r'^\d+$').hasMatch(
+                                                  _emailController.text.trim())
+                                          ? const Icon(Icons.person_outline,
+                                              color: Colors.green)
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 16),
                           if (_isOtpLogin) ...[

@@ -763,10 +763,9 @@ class AuthService {
         identifier.contains('@') ? identifier.toLowerCase() : identifier;
     final isEmail = normalizedIdentifier.contains('@');
 
-    // Local Fallback (Remote API call removed to favor Firebase Phone Auth)
-    _otp = (100000 + Random().nextInt(900000)).toString();
-
     if (isEmail) {
+      // Local fallback for email OTP only
+      _otp = (100000 + Random().nextInt(900000)).toString();
       try {
         await _emailService.sendOtp(normalizedIdentifier, _otp!);
         return 'email';
@@ -775,20 +774,15 @@ class AuthService {
         return 'debug';
       }
     } else {
-      // For mobile, in a real app you'd use Twilio/Firebase Auth
-      // Here we simulate it by printing to console and returning success
-      if (kDebugMode) {
-        debugPrint('=========================================');
-        debugPrint('MOBILE OTP FOR $identifier: $_otp');
-        debugPrint('=========================================');
-      }
-      return 'sms_simulated';
+      // For phone, we use Firebase verifyPhoneNumber instead of this method.
+      // This is now only a placeholder for consistency if needed by other logic.
+      throw Exception('Use verifyPhoneNumber for phone OTP');
     }
   }
 
   Future<void> sendPasswordResetOtp(String email) async {
     final normalizedEmail = email.toLowerCase();
-    // Local fallback (Remote API call removed)
+    // Local fallback for email only
     _otp = (100000 + Random().nextInt(900000)).toString();
     await _emailService.sendOtp(normalizedEmail, _otp!);
   }

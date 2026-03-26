@@ -163,7 +163,14 @@ class _StaffDashboardState extends State<StaffDashboard> {
             ),
             const NotificationBadge(),
             IconButton(
-                icon: const Icon(Icons.logout), onPressed: () => auth.logout()),
+                icon: const Icon(Icons.logout),
+                onPressed: () async {
+                  await auth.logout();
+                  if (mounted) {
+                    Navigator.of(context)
+                        .pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                }),
           ],
         ),
         body: _buildPage(_selectedIndex),
