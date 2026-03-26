@@ -1,4 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -37,12 +38,50 @@ class _LoginScreenState extends State<LoginScreen> {
   String _selectedCountryCode = '+91';
   String? _otpSource; // 'server' or 'email'
 
+  Timer? _resendTimer;
+  int _secondsRemaining = 0;
+  bool _canResend = true;
+
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowAdminBanner();
+    });
+  }
+
+  @override
+  void dispose() {
+    _resendTimer?.cancel();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _startResendTimer() {
+    if (!mounted) return;
+    setState(() {
+      _secondsRemaining = 30;
+      _canResend = false;
+    });
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_secondsRemaining == 0) {
+        setState(() {
+          _canResend = true;
+        });
+        timer.cancel();
+      } else {
+        setState(() {
+          _secondsRemaining--;
+        });
+      }
     });
   }
 
@@ -324,6 +363,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleSendOtp() async {
+    if (!_canResend) {
+      _showFeedback('Please wait ${_secondsRemaining}s before resending.',
+          isError: true);
+      return;
+    }
+
     final rawIdentifier = _emailController.text.trim();
     if (rawIdentifier.isEmpty) {
       _showFeedback('Please enter your email or mobile number.', isError: true);
@@ -362,6 +407,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _otpSent = true;
               _isLoading = false;
             });
+            _startResendTimer();
             _showFeedback('OTP sent to your phone via Firebase.');
             _promptEnterOtp(identifier, isFirebase: true);
           },
@@ -379,6 +425,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _otpSource = source;
         _otpSent = true;
       });
+      _startResendTimer();
       _showFeedback('OTP sent via Email.');
       _promptEnterOtp(identifier);
     } catch (e) {
@@ -704,7 +751,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleSendOtp,
+                                  onPressed: (_isLoading || !_canResend)
+                                      ? null
+                                      : _handleSendOtp,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green.shade600,
                                     foregroundColor: Colors.white,
@@ -716,7 +765,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  child: Text(_otpSent ? 'Resend' : 'Send'),
+                                  child: Text(_canResend
+                                      ? (_otpSent ? 'Resend' : 'Send')
+                                      : '${_secondsRemaining}s'),
                                 ),
                               ],
                             ),

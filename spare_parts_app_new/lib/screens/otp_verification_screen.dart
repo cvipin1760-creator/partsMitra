@@ -46,12 +46,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   void _startTimer() {
+    if (!mounted) return;
     setState(() {
       _secondsRemaining = 30;
       _canResend = false;
     });
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_secondsRemaining == 0) {
         setState(() {
           _canResend = true;
@@ -128,7 +133,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Enter the 6-digit code sent to\n${widget.email}',
+                              'Enter the latest 6-digit code sent to\n${widget.email}',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   fontSize: 14, color: Colors.grey.shade600),

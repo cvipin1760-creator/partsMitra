@@ -1,4 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -30,6 +31,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isEmailRegistration = true; // Toggle between Email and Mobile
   double? _latitude;
   double? _longitude;
+
+  Timer? _resendTimer;
+  int _secondsRemaining = 0;
+  bool _canResend = true;
+
   List<String> _allowedRoles = [
     Constants.roleMechanic,
     Constants.roleRetailer,
@@ -40,6 +46,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     _loadAllowedRoles();
+  }
+
+  @override
+  void dispose() {
+    _resendTimer?.cancel();
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  void _startResendTimer() {
+    if (!mounted) return;
+    setState(() {
+      _secondsRemaining = 30;
+      _canResend = false;
+    });
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_secondsRemaining == 0) {
+        setState(() {
+          _canResend = true;
+        });
+        timer.cancel();
+      } else {
+        setState(() {
+          _secondsRemaining--;
+        });
+      }
+    });
   }
 
   Future<void> _loadAllowedRoles() async {
@@ -170,6 +212,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
+    if (!_canResend) {
+      _showFeedback(
+          'Please wait ${_secondsRemaining}s before requesting OTP again.',
+          isError: true);
+      return;
+    }
+
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
@@ -244,6 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onCodeSent: (verId) {
             if (mounted) {
               setState(() => _isLoading = false);
+              _startResendTimer();
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => OtpVerificationScreen(
@@ -267,6 +317,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // For email registration, we still use the provider's sendOtp method
       final source = await authProvider.sendOtp(target, registrationData);
       debugPrint('RegisterScreen: OTP source: $source');
+      _startResendTimer();
 
       if (mounted) {
         await Navigator.of(context).push(
@@ -530,11 +581,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _buildLocationButton(),
                           const SizedBox(height: 32),
 
-                          // Register Button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleRegister,
+                              onPressed: (_isLoading || !_canResend)
+                                  ? null
+                                  : _handleRegister,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green.shade600,
                                 foregroundColor: Colors.white,
@@ -554,9 +606,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
-                                      'Send OTP & Register',
-                                      style: TextStyle(
+                                  : Text(
+                                      _canResend
+                                          ? 'Send OTP & Register'
+                                          : 'Resend in ${_secondsRemaining}s',
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),

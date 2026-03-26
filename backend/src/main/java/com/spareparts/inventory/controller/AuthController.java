@@ -233,15 +233,20 @@ public class AuthController {
         // Normalize
         final String email = identifier.contains("@") ? identifier.toLowerCase().trim() : identifier.trim();
 
-        Otp storedOtp = otpRepository.findTopByEmailOrderByExpiryTimeDesc(email).orElse(null);
+        List<Otp> storedOtps = otpRepository.findAllByEmailOrderByExpiryTimeDesc(email);
         
-        if (storedOtp == null || !storedOtp.getOtp().equals(otp)) {
-            System.out.println("OTP Verification Failed for " + email + ". Received: " + otp + ", Stored: " + (storedOtp != null ? storedOtp.getOtp() : "null"));
-            return ResponseEntity.badRequest().body(new MessageResponse("Invalid OTP."));
+        Otp validOtp = null;
+        for (int i = 0; i < Math.min(storedOtps.size(), 2); i++) {
+            Otp candidate = storedOtps.get(i);
+            if (candidate.getOtp().equals(otp) && !candidate.isExpired()) {
+                validOtp = candidate;
+                break;
+            }
         }
 
-        if (storedOtp.isExpired()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("OTP has expired. Please request a new one."));
+        if (validOtp == null) {
+            System.out.println("OTP Verification Failed for " + email + ". Received: " + otp);
+            return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP. Please use the latest code from your email."));
         }
 
         // Find user
@@ -317,15 +322,20 @@ public class AuthController {
                 return ResponseEntity.status(401).body(new MessageResponse("Firebase verification failed: " + e.getMessage()));
             }
         } else {
-            // Traditional OTP verification from DB
-            Otp storedOtp = otpRepository.findTopByEmailOrderByExpiryTimeDesc(signUpRequest.getEmail()).orElse(null);
-            if (storedOtp == null || !storedOtp.getOtp().equals(signUpRequest.getOtp())) {
-                System.out.println("Signup OTP Verification Failed for " + signUpRequest.getEmail() + ". Received: " + signUpRequest.getOtp() + ", Stored: " + (storedOtp != null ? storedOtp.getOtp() : "null"));
-                return ResponseEntity.badRequest().body(new MessageResponse("Invalid OTP."));
+            // Traditional OTP verification from DB (allow last 2)
+            List<Otp> storedOtps = otpRepository.findAllByEmailOrderByExpiryTimeDesc(signUpRequest.getEmail());
+            Otp validOtp = null;
+            for (int i = 0; i < Math.min(storedOtps.size(), 2); i++) {
+                Otp candidate = storedOtps.get(i);
+                if (candidate.getOtp().equals(signUpRequest.getOtp()) && !candidate.isExpired()) {
+                    validOtp = candidate;
+                    break;
+                }
             }
 
-            if (storedOtp.isExpired()) {
-                return ResponseEntity.badRequest().body(new MessageResponse("OTP has expired."));
+            if (validOtp == null) {
+                System.out.println("Signup OTP Verification Failed for " + signUpRequest.getEmail() + ". Received: " + signUpRequest.getOtp());
+                return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
             }
             
             // Remove OTP after use
@@ -409,13 +419,18 @@ public class AuthController {
         // Normalize
         final String email = identifier.contains("@") ? identifier.toLowerCase().trim() : identifier.trim();
 
-        Otp storedOtp = otpRepository.findTopByEmailOrderByExpiryTimeDesc(email).orElse(null);
-        if (storedOtp == null || !storedOtp.getOtp().equals(otp)) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
+        List<Otp> storedOtps = otpRepository.findAllByEmailOrderByExpiryTimeDesc(email);
+        Otp validOtp = null;
+        for (int i = 0; i < Math.min(storedOtps.size(), 2); i++) {
+            Otp candidate = storedOtps.get(i);
+            if (candidate.getOtp().equals(otp) && !candidate.isExpired()) {
+                validOtp = candidate;
+                break;
+            }
         }
 
-        if (storedOtp.isExpired()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("OTP has expired."));
+        if (validOtp == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Invalid or expired OTP."));
         }
 
         User user = userRepository.findByEmail(email)
