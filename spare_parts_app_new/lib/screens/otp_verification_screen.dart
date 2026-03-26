@@ -122,13 +122,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             const SizedBox(height: 24),
 
                             // Header Text
-                            const Text(
+                            Text(
                               'Verification',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -136,7 +136,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               'Enter the latest 6-digit code sent to\n${widget.email}',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  fontSize: 14, color: Colors.grey.shade600),
+                                  fontSize: 14,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant),
                             ),
                             const SizedBox(height: 32),
 
@@ -144,33 +147,45 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             TextFormField(
                               controller: _otpController,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 8,
-                                color: Color.fromARGB(221, 184, 46, 46),
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                               decoration: InputDecoration(
                                 hintText: '000000',
-                                hintStyle:
-                                    TextStyle(color: Colors.grey.shade300),
+                                hintStyle: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.3)),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade200),
+                                  borderSide: BorderSide(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outlineVariant),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade200),
+                                  borderSide: BorderSide(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outlineVariant),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
                                   borderSide: BorderSide(
-                                      color: Colors.green.shade600, width: 2),
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      width: 2),
                                 ),
                                 filled: true,
-                                fillColor: Colors.grey.shade50,
+                                fillColor: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withOpacity(0.3),
                               ),
                               keyboardType: TextInputType.number,
                               maxLength: 6,
@@ -374,8 +389,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     : 'Resend in ${_secondsRemaining}s',
                                 style: TextStyle(
                                   color: _canResend
-                                      ? Colors.green.shade700
-                                      : Colors.grey,
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.5),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
