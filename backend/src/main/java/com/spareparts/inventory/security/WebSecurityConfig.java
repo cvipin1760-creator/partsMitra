@@ -90,6 +90,21 @@ public class WebSecurityConfig {
                 }))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"message\":\"Unauthorized\"}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json");
+                            String msg = accessDeniedException.getMessage();
+                            if (msg == null) msg = "Access Denied";
+                            msg = msg.replace("\"", "'");
+                            response.getWriter().write("{\"message\":\"" + msg + "\"}");
+                        })
+                )
                 .authorizeHttpRequests(auth ->
                         auth.requestMatchers("/api/auth/**").permitAll()
                                 .requestMatchers("/api/test/**").permitAll()

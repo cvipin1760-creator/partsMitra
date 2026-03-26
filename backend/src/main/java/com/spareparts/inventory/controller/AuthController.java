@@ -64,7 +64,7 @@ public class AuthController {
     @Value("${app.otp.demo-mode:false}")
     private boolean isDemoMode;
 
-    @PostMapping("/send-otp")
+    @PostMapping(value = "/send-otp", produces = "application/json")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
         String identifier = body.get("email");
         if (identifier == null || identifier.isEmpty()) {
@@ -143,7 +143,7 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/phone-login")
+    @PostMapping(value = "/phone-login", produces = "application/json")
     public ResponseEntity<?> loginWithPhone(@RequestBody Map<String, String> body) {
         String phoneNumber = body.get("phoneNumber");
         String firebaseToken = body.get("firebaseToken");
@@ -196,7 +196,7 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/otp-login")
+    @PostMapping(value = "/otp-login", produces = "application/json")
     @Transactional
     public ResponseEntity<?> otpLogin(@RequestBody Map<String, String> body) {
         String identifier = body.get("email");
@@ -246,7 +246,7 @@ public class AuthController {
                 user.getPoints()));
     }
 
-    @PostMapping("/signin")
+    @PostMapping(value = "/signin", produces = "application/json")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
@@ -273,7 +273,7 @@ public class AuthController {
                 user.getPoints()));
     }
 
-    @PostMapping("/signup")
+    @PostMapping(value = "/signup", produces = "application/json")
     @Transactional
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
@@ -359,7 +359,7 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("FCM token updated successfully"));
     }
 
-    @PostMapping("/reset-password")
+    @PostMapping(value = "/reset-password", produces = "application/json")
     @Transactional
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
         String identifier = body.get("email");

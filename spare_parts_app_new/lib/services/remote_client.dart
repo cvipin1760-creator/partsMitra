@@ -16,7 +16,10 @@ class RemoteClient {
   static VoidCallback? onUnauthorized;
 
   Future<Map<String, String>> _getHeaders(Map<String, String>? extra) async {
-    final Map<String, String> headers = {'Content-Type': 'application/json'};
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString('user');
     if (userStr != null) {
