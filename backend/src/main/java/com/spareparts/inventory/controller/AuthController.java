@@ -125,6 +125,18 @@ public class AuthController {
             }
         } else {
             System.out.println("DEMO MODE: Skipping email send for " + email + ". OTP is: " + otp);
+            try {
+                otpService.saveOtp(email, otp);
+                System.out.println("Persistent OTP saved for " + email + " (demo mode)");
+            } catch (Exception e) {
+                System.err.println("Error saving OTP to DB (demo mode): " + e.getMessage());
+                return ResponseEntity.status(500).body(new MessageResponse("Failed to save OTP session. Please try again."));
+            }
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("message", "OTP generated (demo mode)");
+            payload.put("otp", otp);
+            payload.put("email", email);
+            return ResponseEntity.ok(payload);
         }
 
         // 2. THEN, on successful send, save OTP to persistent storage
