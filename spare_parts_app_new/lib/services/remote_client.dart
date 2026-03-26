@@ -5,12 +5,15 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import 'package:flutter/foundation.dart';
+import 'auth_exceptions.dart';
 
 class RemoteClient {
   final String baseUrl = Constants.baseUrl;
   static const int _maxRetries = 4;
   static const Duration _timeout = Duration(seconds: 60);
   static const Duration _retryDelay = Duration(seconds: 2);
+
+  static VoidCallback? onUnauthorized;
 
   Future<Map<String, String>> _getHeaders(Map<String, String>? extra) async {
     final Map<String, String> headers = {'Content-Type': 'application/json'};
@@ -38,6 +41,13 @@ class RemoteClient {
           if (res.body.isEmpty) return isList ? [] : null;
           return jsonDecode(res.body);
         }
+
+        // Handle Token Expiration (401 Unauthorized)
+        if (res.statusCode == 401) {
+          onUnauthorized?.call();
+          throw TokenExpiredException();
+        }
+
         // If it's a 503 or 502, it might be Render waking up/restarting
         if (res.statusCode == 502 || res.statusCode == 503) {
           attempts++;
@@ -96,8 +106,8 @@ class RemoteClient {
     if (fields != null) {
       req.fields.addAll(fields);
     }
-    req.files
-        .add(http.MultipartFile.fromBytes(fileField, bytes, filename: fileName));
+    req.files.add(
+        http.MultipartFile.fromBytes(fileField, bytes, filename: fileName));
 
     // For multipart, we can't easily use _requestWithRetry because of the stream
     // but we can add a timeout to the send() call.

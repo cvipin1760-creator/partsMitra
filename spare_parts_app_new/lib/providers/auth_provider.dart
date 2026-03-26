@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../services/remote_client.dart';
 
 import 'package:spare_parts_app/services/auth_exceptions.dart';
 
@@ -15,6 +16,7 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
 
   AuthProvider() {
+    RemoteClient.onUnauthorized = logout;
     _isLoading = true;
     _loadUser();
   }
