@@ -102,25 +102,29 @@ public class AuthController {
         // Log the generated OTP immediately for troubleshooting
         System.out.println("GENERATED OTP for " + email + ": " + otp);
         
-        // 1. Attempt to send OTP via Email FIRST
-        try {
-            otpService.sendOtpEmail(email, otp);
-            System.out.println("OTP email sent successfully to " + email);
-        } catch (Exception e) {
-            System.err.println("CRITICAL: FAILED to send email to " + email);
-            System.err.println("Error Message: " + e.getMessage());
-            e.printStackTrace();
-            
-            String userMessage = "Email delivery failed. ";
-            if (e.getMessage() != null && e.getMessage().contains("Username and Password not accepted")) {
-                userMessage += "Reason: SMTP Authentication failed.";
-            } else if (e.getMessage() != null && (e.getMessage().contains("Connect timed out") || e.getMessage().contains("Connection timed out"))) {
-                userMessage += "Reason: Connection to mail server timed out.";
-            } else {
-                userMessage += "Please check server logs.";
+        // 1. Attempt to send OTP via Email FIRST (skip if in demo mode)
+        if (!isDemoMode) {
+            try {
+                otpService.sendOtpEmail(email, otp);
+                System.out.println("OTP email sent successfully to " + email);
+            } catch (Exception e) {
+                System.err.println("CRITICAL: FAILED to send email to " + email);
+                System.err.println("Error Message: " + e.getMessage());
+                e.printStackTrace();
+                
+                String userMessage = "Email delivery failed. ";
+                if (e.getMessage() != null && e.getMessage().contains("Username and Password not accepted")) {
+                    userMessage += "Reason: SMTP Authentication failed.";
+                } else if (e.getMessage() != null && (e.getMessage().contains("Connect timed out") || e.getMessage().contains("Connection timed out"))) {
+                    userMessage += "Reason: Connection to mail server timed out.";
+                } else {
+                    userMessage += "Please check server logs.";
+                }
+                
+                return ResponseEntity.status(500).body(new MessageResponse(userMessage));
             }
-            
-            return ResponseEntity.status(500).body(new MessageResponse(userMessage));
+        } else {
+            System.out.println("DEMO MODE: Skipping email send for " + email + ". OTP is: " + otp);
         }
 
         // 2. THEN, on successful send, save OTP to persistent storage
