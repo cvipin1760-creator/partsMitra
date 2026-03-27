@@ -43,6 +43,10 @@ public class EmailService {
             log.info("OTP Mode LOCAL: OTP for {} is {}", email, otp);
             return;
         }
+        if (fromEmail == null || fromEmail.isBlank()) {
+            log.error("SendGrid FROM email is not configured (sendgrid.from.email is blank).");
+            throw new IllegalStateException("SendGrid FROM email is not configured");
+        }
         if (apiKey == null || apiKey.isBlank()) {
             log.error("SENDGRID_API_KEY not configured. Falling back to LOCAL print for {}", email);
             log.info("OTP for {} is {}", email, otp);
@@ -50,6 +54,7 @@ public class EmailService {
         }
         try {
             SendGrid sg = new SendGrid(apiKey);
+            log.info("Sending OTP email via SendGrid. FROM: {}, TO: {}", fromEmail, email);
             String body = "{\"personalizations\":[{\"to\":[{\"email\":\"" + email + "\"}]}]," +
                     "\"from\":{\"email\":\"" + fromEmail + "\"}," +
                     "\"subject\":\"Your OTP for Parts Mitra\"," +

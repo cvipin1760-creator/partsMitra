@@ -83,7 +83,9 @@ const AdminDashboard = () => {
     password: '',
     role: ROLE_MECHANIC,
     phone: '',
-    address: ''
+    address: '',
+    latitude: '',
+    longitude: ''
   });
 
   const [productSelectionMode, setProductSelectionMode] = useState(false);
@@ -96,6 +98,17 @@ const AdminDashboard = () => {
   const [pointsUser, setPointsUser] = useState<any>(null);
   const [pointsAmount, setPointsAmount] = useState(0);
   const [pointsOperation, setPointsOperation] = useState('ADD');
+
+  const [showEditUser, setShowEditUser] = useState(false);
+  const [editingUserData, setEditingUserData] = useState<any>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editStatus, setEditStatus] = useState('ACTIVE');
+  const [editPoints, setEditPoints] = useState<number>(0);
+  const [editLatitude, setEditLatitude] = useState<number | ''>('');
+  const [editLongitude, setEditLongitude] = useState<number | ''>('');
 
   const [orderRequests, setOrderRequests] = useState<any[]>([]);
   const [fetchingRequests, setFetchingRequests] = useState(false);
@@ -617,12 +630,77 @@ const AdminDashboard = () => {
         '',
         newUser.address
       );
+      try {
+        const res = await api.get('/admin/users');
+        const created = res.data.find((u: any) => u.email.toLowerCase() === newUser.email.toLowerCase());
+        if (created) {
+          const payload: any = {};
+          if (newUser.latitude) payload.latitude = parseFloat(String(newUser.latitude));
+          if (newUser.longitude) payload.longitude = parseFloat(String(newUser.longitude));
+          if (Object.keys(payload).length > 0) {
+            await api.put(`/admin/users/${created.id}/profile`, payload);
+          }
+        }
+      } catch {}
       setShowAddUser(false);
-      setNewUser({ name: '', email: '', password: '', role: ROLE_MECHANIC, phone: '', address: '' });
+      setNewUser({ name: '', email: '', password: '', role: ROLE_MECHANIC, phone: '', address: '', latitude: '', longitude: '' });
       fetchUsers();
     } catch (err) {
       console.error(err);
       alert('Failed to create user');
+    }
+  };
+
+  const useBrowserLocation = (onSet: (lat: number, lon: number) => void) => {
+    if (!navigator.geolocation) {
+      alert('Geolocation not supported by this browser');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        onSet(pos.coords.latitude, pos.coords.longitude);
+      },
+      (err) => {
+        console.error(err);
+        alert('Failed to get current location');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const openEditUser = (user: any) => {
+    setEditingUserData(user);
+    setEditName(user.name || '');
+    setEditEmail(user.email || '');
+    setEditPhone(user.phone || '');
+    setEditAddress(user.address || '');
+    setEditStatus(user.status || 'ACTIVE');
+    setEditPoints(user.points || 0);
+    setEditLatitude(typeof user.latitude === 'number' ? user.latitude : '');
+    setEditLongitude(typeof user.longitude === 'number' ? user.longitude : '');
+    setShowEditUser(true);
+  };
+
+  const saveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUserData) return;
+    try {
+      const payload: any = {};
+      if (editName !== editingUserData.name) payload.name = editName;
+      if (editEmail !== editingUserData.email) payload.email = editEmail;
+      if (editPhone !== editingUserData.phone) payload.phone = editPhone;
+      if (editAddress !== editingUserData.address) payload.address = editAddress;
+      if (editStatus !== editingUserData.status) payload.status = editStatus;
+      if (editPoints !== (editingUserData.points || 0)) payload.points = editPoints;
+      if (editLatitude !== (editingUserData.latitude ?? '')) payload.latitude = editLatitude === '' ? null : editLatitude;
+      if (editLongitude !== (editingUserData.longitude ?? '')) payload.longitude = editLongitude === '' ? null : editLongitude;
+      await api.put(`/admin/users/${editingUserData.id}/profile`, payload);
+      setShowEditUser(false);
+      setEditingUserData(null);
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update user');
     }
   };
 
@@ -970,6 +1048,72 @@ const AdminDashboard = () => {
 
       {activeTab === 'users' && (
         <div className="space-y-4">
+          {showEditUser && (
+            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+                <h3 className="text-lg font-black text-gray-900 mb-4">Edit User</h3>
+                <form onSubmit={saveEditUser} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase">Name</label>
+                    <input className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editName} onChange={e => setEditName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase">Email</label>
+                    <input className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase">Mobile</label>
+                    <input className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editPhone} onChange={e => setEditPhone(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase">Address</label>
+                    <input className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editAddress} onChange={e => setEditAddress(e.target.value)} />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase">Status</label>
+                      <select className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editStatus} onChange={e => setEditStatus(e.target.value)}>
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="PENDING">PENDING</option>
+                        <option value="SUSPENDED">SUSPENDED</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase">Points</label>
+                      <input type="number" className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editPoints} onChange={e => setEditPoints(parseInt(e.target.value || '0', 10))} />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase">Latitude</label>
+                      <input className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editLatitude} onChange={e => setEditLatitude(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase">Longitude</label>
+                      <input className="w-full border border-gray-300 rounded-lg p-2 mt-1" value={editLongitude} onChange={e => setEditLongitude(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                    </div>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg mr-2"
+                      onClick={() => useBrowserLocation((lat, lon) => { setEditLatitude(lat); setEditLongitude(lon); })}
+                    >
+                      Use Current Location
+                    </button>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={() => { setShowEditUser(false); setEditingUserData(null); }}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white">
+                      Save
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-2">
             <div className="relative w-full md:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -1043,6 +1187,13 @@ const AdminDashboard = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openEditUser(user)}
+                          className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                          title="Edit User"
+                        >
+                          <FileText size={18} />
+                        </button>
                         <button
                           onClick={() => {
                             setPointsUser(user);
@@ -2340,6 +2491,57 @@ const AdminDashboard = () => {
                   onChange={e => setNewUser({...newUser, password: e.target.value})}
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Mobile</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  value={newUser.phone}
+                  onChange={e => setNewUser({...newUser, phone: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Address</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  value={newUser.address}
+                  onChange={e => setNewUser({...newUser, address: e.target.value})}
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700">Latitude</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                    value={(newUser as any).latitude}
+                    onChange={e => setNewUser({...newUser, latitude: e.target.value})}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700">Longitude</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-2 mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                    value={(newUser as any).longitude}
+                    onChange={e => setNewUser({...newUser, longitude: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg"
+                  onClick={() =>
+                    useBrowserLocation((lat, lon) =>
+                      setNewUser({ ...newUser, latitude: String(lat), longitude: String(lon) })
+                    )
+                  }
+                >
+                  Use Current Location
+                </button>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Role</label>
