@@ -9,6 +9,7 @@ import '../utils/constants.dart';
 import 'otp_verification_screen.dart';
 import '../services/settings_service.dart';
 import 'login_screen.dart';
+import 'mobile_otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final bool showAppBar;
@@ -31,10 +32,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   double? _latitude;
   double? _longitude;
 
-  Timer? _resendTimer;
-  int _secondsRemaining = 0;
-  bool _canResend = true;
-
   List<String> _allowedRoles = [
     Constants.roleMechanic,
     Constants.roleRetailer,
@@ -49,38 +46,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _resendTimer?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     _addressController.dispose();
     super.dispose();
-  }
-
-  void _startResendTimer() {
-    if (!mounted) return;
-    setState(() {
-      _secondsRemaining = 30;
-      _canResend = false;
-    });
-    _resendTimer?.cancel();
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_secondsRemaining == 0) {
-        setState(() {
-          _canResend = true;
-        });
-        timer.cancel();
-      } else {
-        setState(() {
-          _secondsRemaining--;
-        });
-      }
-    });
   }
 
   Future<void> _loadAllowedRoles() async {
@@ -215,13 +186,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
-    if (!_canResend) {
-      _showFeedback(
-          'Please wait ${_secondsRemaining}s before requesting OTP again.',
-          isError: true);
-      return;
-    }
-
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
@@ -255,10 +219,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
-    try {
-      debugPrint('RegisterScreen: Starting registration process...');
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final fullPhone =
           (_selectedCountryCode + phone.replaceAll(RegExp(r'\D'), ''));
 
@@ -273,15 +236,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'longitude': _longitude,
       };
 
-      debugPrint('RegisterScreen: Starting verification for $email...');
-
-      // For email registration, we still use the provider's sendOtp method
-      final source = await authProvider.sendOtp(email, registrationData);
-      debugPrint('RegisterScreen: OTP source: $source');
-      _startResendTimer();
+      await authProvider.sendOtp(email, registrationData);
 
       if (mounted) {
-        await Navigator.of(context).push(
+        final otp = await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => OtpVerificationScreen(
               email: email,
@@ -291,16 +249,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         );
+
+        if (otp != null) {
+          await authProvider.register(
+            name,
+            email,
+            password,
+            _selectedRole,
+            fullPhone,
+            address,
+            latitude: _latitude,
+            longitude: _longitude,
+            otp: otp,
+          );
+
+          _showFeedback('Registration successful!');
+
+          final mobileVerified = await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => MobileOtpVerificationScreen(
+                phoneNumber: fullPhone,
+              ),
+            ),
+          );
+
+          if (mobileVerified == true) {
+            Navigator.of(context).pushReplacementNamed('/thank-you');
+          }
+        }
       }
     } catch (e) {
-      debugPrint('RegisterScreen: Error in registration flow: $e');
       String msg = e.toString();
       if (msg.startsWith('Exception: ')) {
         msg = msg.replaceFirst('Exception: ', '');
       }
-      _showFeedback('Failed to send OTP: $msg', isError: true);
+      _showFeedback('Failed to register: $msg', isError: true);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -500,9 +487,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: (_isLoading || !_canResend)
-                                  ? null
-                                  : _handleRegister,
+                              onPressed: _isLoading ? null : _handleRegister,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                     Theme.of(context).colorScheme.primary,
@@ -526,11 +511,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             .onPrimary,
                                       ),
                                     )
-                                  : Text(
-                                      _canResend
-                                          ? 'Send OTP & Register'
-                                          : 'Resend in ${_secondsRemaining}s',
-                                      style: const TextStyle(
+                                  : const Text(
+                                      'Register',
+                                      style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),

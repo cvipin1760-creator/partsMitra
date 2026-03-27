@@ -333,6 +333,29 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> sendMobileOtp(String phoneNumber) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _authService.sendMobileOtp(phoneNumber);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> verifyMobileOtp(String phoneNumber, String otp) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final success = await _authService.verifyMobileOtp(phoneNumber, otp);
+      return success;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> updateUserStatus(int userId, String status) async {
     _isLoading = true;
     notifyListeners();

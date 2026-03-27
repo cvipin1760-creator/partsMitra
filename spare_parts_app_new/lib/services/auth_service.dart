@@ -782,9 +782,8 @@ class AuthService {
         if (kDebugMode) debugPrint('Local Email OTP failed: $e');
         return 'debug';
       }
-    } else {
-      throw Exception('Use verifyPhoneNumber for phone OTP');
     }
+    throw Exception('Only email OTP is supported for local mode');
   }
 
   Future<void> sendPasswordResetOtp(String email) async {
@@ -799,6 +798,42 @@ class AuthService {
     // Local fallback
     _otp = (100000 + Random().nextInt(900000)).toString();
     await _emailService.sendOtp(normalizedEmail, _otp!);
+  }
+
+  Future<void> sendMobileOtp(String phoneNumber) async {
+    final normalizedPhone = _normalizePhone(phoneNumber);
+    if (Constants.useRemote) {
+      await _remote.postJson('/auth/send-mobile-otp', {
+        'phone': normalizedPhone,
+      });
+      return;
+    }
+    // Local fallback
+    _otp = (100000 + Random().nextInt(900000)).toString();
+    // In a real app, you would use an SMS service here.
+    debugPrint('Local Mobile OTP for $normalizedPhone: $_otp');
+  }
+
+  Future<bool> verifyMobileOtp(String phoneNumber, String otp) async {
+    final normalizedPhone = _normalizePhone(phoneNumber);
+    if (Constants.useRemote) {
+      final res = await _remote.postJson('/auth/verify-mobile-otp', {
+        'phone': normalizedPhone,
+        'otp': otp,
+      });
+      return res != null;
+    }
+
+    if (_otp != otp) throw "Invalid OTP";
+
+    final db = await _dbService.database;
+    final count = await db.update(
+      "users",
+      {"phone_verified": 1},
+      where: "phone = ?",
+      whereArgs: [normalizedPhone],
+    );
+    return count > 0;
   }
 
   // =============================
@@ -996,6 +1031,45 @@ class AuthService {
       where: "id = ?",
       whereArgs: [userId],
     );
+  }
+
+  Future<void> adminUpdateUserProfile(
+    int userId, {
+    String? name,
+    String? email,
+    String? phone,
+    String? address,
+    String? status,
+    double? latitude,
+    double? longitude,
+    int? points,
+  }) async {
+    if (Constants.useRemote) {
+      final payload = <String, dynamic>{};
+      if (name != null) payload['name'] = name;
+      if (email != null) payload['email'] = email;
+      if (phone != null) payload['phone'] = phone;
+      if (address != null) payload['address'] = address;
+      if (status != null) payload['status'] = status;
+      if (latitude != null) payload['latitude'] = latitude;
+      if (longitude != null) payload['longitude'] = longitude;
+      if (points != null) payload['points'] = points;
+      await _remote.putJson('/admin/users/$userId/profile', payload);
+      return;
+    }
+    final db = await _dbService.database;
+    final updates = <String, Object?>{};
+    if (name != null) updates['name'] = name;
+    if (email != null) updates['email'] = email.toLowerCase();
+    if (phone != null) updates['phone'] = phone;
+    if (address != null) updates['address'] = address;
+    if (status != null) updates['status'] = status;
+    if (latitude != null) updates['latitude'] = latitude;
+    if (longitude != null) updates['longitude'] = longitude;
+    if (points != null) updates['points'] = points;
+    if (updates.isNotEmpty) {
+      await db.update('users', updates, where: 'id = ?', whereArgs: [userId]);
+    }
   }
 
   Future<List<User>> getAllUsers() async {

@@ -281,6 +281,71 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/users/{userId}/profile")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
+    public ResponseEntity<?> updateUserFullProfile(@PathVariable Long userId, @RequestBody Map<String, Object> body) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String newName = body.get("name") instanceof String ? (String) body.get("name") : null;
+        String newEmail = body.get("email") instanceof String ? (String) body.get("email") : null;
+        String newPhone = body.get("phone") instanceof String ? (String) body.get("phone") : null;
+        String newAddress = body.get("address") instanceof String ? (String) body.get("address") : null;
+        Object latObj = body.get("latitude");
+        Object lonObj = body.get("longitude");
+        Object pointsObj = body.get("points");
+        String statusStr = body.get("status") instanceof String ? (String) body.get("status") : null;
+
+        if (newEmail != null && !newEmail.equalsIgnoreCase(user.getEmail())) {
+            if (Boolean.TRUE.equals(userRepository.existsByEmailAndDeletedFalse(newEmail))) {
+                return ResponseEntity.badRequest().body("Email is already in use");
+            }
+            user.setEmail(newEmail.toLowerCase());
+        }
+
+        if (newPhone != null && !newPhone.equals(user.getPhone())) {
+            if (Boolean.TRUE.equals(userRepository.existsByPhoneAndDeletedFalse(newPhone))) {
+                return ResponseEntity.badRequest().body("Mobile number is already in use");
+            }
+            user.setPhone(newPhone);
+        }
+
+        if (newName != null) user.setName(newName);
+        if (newAddress != null) user.setAddress(newAddress);
+
+        if (latObj instanceof Number && lonObj instanceof Number) {
+            user.setLatitude(((Number) latObj).doubleValue());
+            user.setLongitude(((Number) lonObj).doubleValue());
+        }
+
+        if (pointsObj instanceof Number) {
+            long pts = ((Number) pointsObj).longValue();
+            user.setPoints(Math.max(0, pts));
+        }
+
+        if (statusStr != null) {
+            try {
+                user.setStatus(User.UserStatus.valueOf(statusStr.toUpperCase()));
+            } catch (IllegalArgumentException ignore) {
+                return ResponseEntity.badRequest().body("Invalid status value");
+            }
+        }
+
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of(
+                "id", user.getId(),
+                "name", user.getName(),
+                "email", user.getEmail(),
+                "phone", user.getPhone(),
+                "address", user.getAddress(),
+                "status", user.getStatus().name(),
+                "latitude", user.getLatitude(),
+                "longitude", user.getLongitude(),
+                "points", user.getPoints(),
+                "role", user.getRole() != null && user.getRole().getName() != null ? user.getRole().getName().name() : "ROLE_MECHANIC"
+        ));
+    }
+
     @PostMapping("/products/{productId}/offer")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_MANAGER')")
     public ResponseEntity<?> setProductOffer(

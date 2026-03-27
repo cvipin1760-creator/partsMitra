@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import 'auth_home_screen.dart';
+import 'mobile_otp_verification_screen.dart';
 
 class PendingApprovalScreen extends StatelessWidget {
   const PendingApprovalScreen({super.key});
@@ -102,11 +103,45 @@ class PendingApprovalScreen extends StatelessWidget {
                     foregroundColor: Colors.orange.shade800,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                    textStyle: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
+                if (user != null && !user.phoneVerified)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => MobileOtpVerificationScreen(
+                              phoneNumber: user.phone!,
+                            ),
+                          ),
+                        );
+                        if (result == true) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('Mobile number verified successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          authProvider.refreshUser();
+                        }
+                      },
+                      icon: const Icon(Icons.verified_user_outlined),
+                      label: const Text('Verify Mobile Number'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        textStyle: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: () => isLoggedOut
