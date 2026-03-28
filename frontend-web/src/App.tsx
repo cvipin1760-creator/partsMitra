@@ -36,7 +36,7 @@ const App: React.FC = () => {
 
   const isAdminOrSuper = currentUser?.roles?.includes(ROLE_ADMIN) || currentUser?.roles?.includes(ROLE_SUPER_MANAGER);
   const isPending = currentUser?.status === 'PENDING';
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || location.pathname === '/pending-approval';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || (location.pathname === '/pending-approval' && isPending);
 
   useEffect(() => {
     // Listen to foreground webpush events

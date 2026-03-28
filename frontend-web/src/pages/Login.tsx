@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import AuthService from '../services/auth.service';
+import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,6 +21,7 @@ import {
 
 const Login: React.FC = () => {
   const { t, language, toggleLanguage } = useLanguage();
+  const { setCurrentUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
@@ -35,11 +37,17 @@ const Login: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
+    // Only redirect if we have a fully authenticated user
     const user = AuthService.getCurrentUser();
-    if (user) {
-      navigate('/dashboard');
+    if (user && user.token) {
+      if (user.status === 'PENDING') {
+        navigate('/pending-approval', { replace: true });
+      } else {
+        const from = (location.state as any)?.from?.pathname || '/dashboard';
+        navigate(from, { replace: true });
+      }
     }
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   useEffect(() => {
     let timer: any;
@@ -96,7 +104,10 @@ const Login: React.FC = () => {
 
     loginPromise.then(
       (response) => {
-        const user = response?.data || AuthService.getCurrentUser();
+        // response from login/loginWithOtp already includes the user data via response.data in axios
+        const user = response; 
+        setCurrentUser(user); // Update context
+        
         if (user?.status === 'PENDING') {
           navigate('/pending-approval', { replace: true });
         } else {

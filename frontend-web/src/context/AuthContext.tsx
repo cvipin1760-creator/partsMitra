@@ -14,8 +14,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const user = AuthService.getCurrentUser();
-    if (user) {
+    if (user && user.token) {
       setCurrentUser(user);
+    } else {
+      setCurrentUser(null);
     }
   }, []);
 
