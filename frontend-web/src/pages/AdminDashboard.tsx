@@ -115,6 +115,7 @@ const AdminDashboard = () => {
 
   const [billingUser, setBillingUser] = useState<any>(null);
   const [billingItems, setBillingItems] = useState<any[]>([]);
+  const [billingDiscount, setBillingDiscount] = useState<number>(0);
   const [billingSearchTerm, setBillingSearchTerm] = useState('');
   const [billingSearchResults, setBillingSearchResults] = useState<any[]>([]);
 
@@ -144,16 +145,22 @@ const AdminDashboard = () => {
   const generateInvoice = async () => {
     if (!billingUser || billingItems.length === 0) return;
     try {
-      const orderItems = billingItems.map(i => ({
-        productId: i.id,
-        productName: i.name,
-        quantity: i.quantity,
-        price: i.sellingPrice
-      }));
-      await api.post(`/admin/orders/create-admin-order?customerId=${billingUser.id}&customerName=${billingUser.name}`, orderItems);
+      const payload = {
+        customerId: billingUser.id,
+        sellerId: currentUser.id,
+        discountAmount: billingDiscount,
+        items: billingItems.map(i => ({
+          productId: i.id,
+          productName: i.name,
+          quantity: i.quantity,
+          price: i.sellingPrice
+        }))
+      };
+      await api.post(`/admin/orders`, payload);
       alert('Invoice generated and reflected in customer orders!');
       setBillingUser(null);
       setBillingItems([]);
+      setBillingDiscount(0);
       fetchOrders();
     } catch (err) {
       console.error(err);
@@ -1356,6 +1363,11 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-black text-gray-900">₹{order.totalAmount.toLocaleString()}</div>
+                      {order.discountAmount > 0 && (
+                        <div className="text-[10px] font-black text-orange-600 mt-1">
+                          Discount: ₹{order.discountAmount.toLocaleString()}
+                        </div>
+                      )}
                       {order.pointsRedeemed > 0 && (
                         <div className="text-[10px] font-black text-amber-600 mt-1">
                           Redeemed: {order.pointsRedeemed} pts (₹{order.pointsRedeemed})
@@ -2016,10 +2028,31 @@ const AdminDashboard = () => {
               )}
             </div>
 
-            <div className="mt-6 border-t border-gray-100 pt-6">
+            <div className="mt-6 border-t border-gray-100 pt-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">Subtotal</span>
+                <span className="text-lg font-bold text-gray-700">₹{billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0).toFixed(2)}</span>
+              </div>
+              
+              <div className="flex justify-between items-center bg-orange-50 p-3 rounded-xl border border-orange-100">
+                <div className="flex items-center gap-2">
+                  <Star size={16} className="text-orange-500" />
+                  <span className="text-orange-700 font-bold uppercase tracking-widest text-[10px]">Discount</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-orange-700 font-bold text-xs">₹</span>
+                  <input
+                    type="number"
+                    className="w-20 bg-white border border-orange-200 rounded-lg px-2 py-1 text-right text-sm font-bold text-orange-700 focus:ring-2 focus:ring-orange-500 outline-none"
+                    value={billingDiscount}
+                    onChange={(e) => setBillingDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                  />
+                </div>
+              </div>
+
               <div className="flex justify-between items-center mb-4">
-                <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">Total Amount</span>
-                <span className="text-2xl font-black text-gray-900">₹{billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0).toFixed(2)}</span>
+                <span className="text-gray-500 font-black uppercase tracking-widest text-xs">Total Payable</span>
+                <span className="text-2xl font-black text-primary-600">₹{Math.max(0, billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0) - billingDiscount).toFixed(2)}</span>
               </div>
               <button
                 disabled={!billingUser || billingItems.length === 0}

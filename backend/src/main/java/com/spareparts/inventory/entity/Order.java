@@ -62,6 +62,9 @@ public class Order {
     @Column(name = "points_earned", nullable = false, columnDefinition = "bigint default 0")
     private Long pointsEarned = 0L;
 
+    @Column(name = "discount_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
     public enum OrderStatus {
         PENDING, APPROVED, PACKED, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
     }

@@ -23,5 +23,6 @@ public class OrderDto {
     private List<OrderItemDto> items;
     private Long pointsRedeemed;
     private Long pointsEarned;
+    private BigDecimal discountAmount;
     private LocalDateTime createdAt;
 }

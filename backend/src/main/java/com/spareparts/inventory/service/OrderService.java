@@ -229,7 +229,7 @@ public class OrderService {
         order.setSeller(seller);
         order.setStatus(Order.OrderStatus.APPROVED);
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderItemDto itemDto : orderRequest.getItems()) {
             Product product = productRepository.findById(itemDto.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found: " + itemDto.getProductId()));
@@ -250,7 +250,7 @@ public class OrderService {
             orderItem.setPrice(price); // Use provided price for admin orders
 
             order.getItems().add(orderItem);
-            totalAmount = totalAmount.add(price.multiply(BigDecimal.valueOf(quantity)));
+            subtotal = subtotal.add(price.multiply(BigDecimal.valueOf(quantity)));
 
             // Update product stock
             int currentStock = product.getStock() != null ? product.getStock() : 0;
@@ -258,6 +258,9 @@ public class OrderService {
             productRepository.save(product);
         }
 
+        BigDecimal discountAmount = orderRequest.getDiscountAmount() != null ? orderRequest.getDiscountAmount() : BigDecimal.ZERO;
+        order.setDiscountAmount(discountAmount);
+        BigDecimal totalAmount = subtotal.subtract(discountAmount).max(BigDecimal.ZERO);
         order.setTotalAmount(totalAmount);
         order = orderRepository.save(order);
 
@@ -464,7 +467,7 @@ public class OrderService {
         }
         
         order.getItems().clear();
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal subtotal = BigDecimal.ZERO;
         
         for (OrderItemDto itemDto : itemDtos) {
             Product product = productRepository.findById(itemDto.getProductId())
@@ -486,7 +489,7 @@ public class OrderService {
             orderItem.setPrice(price);
 
             order.getItems().add(orderItem);
-            totalAmount = totalAmount.add(price.multiply(BigDecimal.valueOf(quantity)));
+            subtotal = subtotal.add(price.multiply(BigDecimal.valueOf(quantity)));
 
             // Update product stock
             int currentStock = product.getStock() != null ? product.getStock() : 0;
@@ -494,6 +497,8 @@ public class OrderService {
             productRepository.save(product);
         }
 
+        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal totalAmount = subtotal.subtract(discountAmount).max(BigDecimal.ZERO);
         order.setTotalAmount(totalAmount);
         order = orderRepository.save(order);
 
@@ -547,6 +552,7 @@ public class OrderService {
         dto.setStatus(order.getStatus());
         dto.setPointsRedeemed(order.getPointsRedeemed());
         dto.setPointsEarned(order.getPointsEarned());
+        dto.setDiscountAmount(order.getDiscountAmount());
         dto.setCreatedAt(order.getCreatedAt());
 
         dto.setItems(order.getItems().stream().map(item -> {

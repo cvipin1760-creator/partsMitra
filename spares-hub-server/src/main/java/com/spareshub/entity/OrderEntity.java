@@ -29,6 +29,8 @@ public class OrderEntity {
     private String deliveredBy;
     @Column(name = "delivered_at")
     private String deliveredAt;
+    @Column(name = "discount_amount")
+    private Double discountAmount = 0.0;
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItemEntity> items = new ArrayList<>();
 
@@ -56,6 +58,8 @@ public class OrderEntity {
     public void setDeliveredBy(String deliveredBy) { this.deliveredBy = deliveredBy; }
     public String getDeliveredAt() { return deliveredAt; }
     public void setDeliveredAt(String deliveredAt) { this.deliveredAt = deliveredAt; }
+    public Double getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(Double discountAmount) { this.discountAmount = discountAmount; }
     public List<OrderItemEntity> getItems() { return items; }
     public void setItems(List<OrderItemEntity> items) { this.items = items; }
 }

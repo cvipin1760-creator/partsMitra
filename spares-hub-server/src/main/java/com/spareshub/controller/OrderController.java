@@ -49,6 +49,8 @@ public class OrderController {
         int customerId = ((Number) body.get("customerId")).intValue();
         String customerName = String.valueOf(body.get("customerName"));
         List<Map<String, Object>> items = (List<Map<String, Object>>) body.get("items");
+        Double discountAmount = body.containsKey("discountAmount") ? Double.parseDouble(String.valueOf(body.get("discountAmount"))) : 0.0;
+        
         OrderEntity o = new OrderEntity();
         o.setCustomerId(customerId);
         o.setCustomerName(customerName);
@@ -56,7 +58,9 @@ public class OrderController {
         o.setSellerName("Admin");
         o.setCreatedAt(new Date().toInstant().toString());
         o.setStatus("APPROVED");
-        double total = 0;
+        o.setDiscountAmount(discountAmount);
+        
+        double subtotal = 0;
         List<OrderItemEntity> itemEntities = new ArrayList<>();
         for (Map<String, Object> it : items) {
             OrderItemEntity item = new OrderItemEntity();
@@ -65,10 +69,10 @@ public class OrderController {
             item.setProductName(String.valueOf(it.get("productName")));
             item.setQuantity(((Number) it.get("quantity")).intValue());
             item.setPrice(Double.parseDouble(String.valueOf(it.get("price"))));
-            total += item.getPrice() * item.getQuantity();
+            subtotal += item.getPrice() * item.getQuantity();
             itemEntities.add(item);
         }
-        o.setTotalAmount(total);
+        o.setTotalAmount(Math.max(0, subtotal - discountAmount));
         o.setItems(itemEntities);
         orderRepo.save(o);
         return ResponseEntity.ok(o);
