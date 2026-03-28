@@ -2372,6 +2372,19 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
 
   void _importExcel() async {
     try {
+      if (!kIsWeb && Platform.isAndroid) {
+        // For Android 13+, Permission.storage is replaced by Permission.photos, etc.
+        // But for .xlsx, we might need Permission.manageExternalStorage or just rely on FilePicker
+        // However, requesting storage permission is usually a safe bet for older versions.
+        var status = await Permission.storage.request();
+        if (status.isDenied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Storage permission denied')),
+          );
+          return;
+        }
+      }
+
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx'],

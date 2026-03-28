@@ -2,7 +2,7 @@ import '../services/settings_service.dart';
 
 class Constants {
   static String get serverHost => SettingsService.getCachedRemoteSetting(
-      'SERVER_HOST', 'sparehub-0t47.onrender.com');
+      'SERVER_HOST', 'partsmitra.onrender.com');
 
   static String get defaultBase => 'https://$serverHost/api';
   static const String baseOverride =

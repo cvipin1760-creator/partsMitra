@@ -59,16 +59,17 @@ class ProductService {
   }
 
   Future<void> uploadExcel(Uint8List bytes, {int? categoryId}) async {
-    final uri = Uri.parse('${Constants.baseUrl}/excel/upload').replace(
-      queryParameters:
-          categoryId != null ? {'categoryId': categoryId.toString()} : null,
-    );
-    var request = http.MultipartRequest('POST', uri);
-    request.files.add(
-        http.MultipartFile.fromBytes('file', bytes, filename: 'products.xlsx'));
-    final res = await request.send();
-    if (res.statusCode != 200) {
-      throw Exception('Upload failed');
+    try {
+      await _remote.postMultipart(
+        '/excel/upload',
+        fileField: 'file',
+        fileName: 'products.xlsx',
+        bytes: bytes,
+        fields: categoryId != null ? {'categoryId': categoryId.toString()} : null,
+      );
+    } catch (e) {
+      debugPrint('Excel upload error: $e');
+      rethrow;
     }
   }
 

@@ -128,7 +128,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           _localOtpGlobal = (remote['FORCE_LOCAL_OTP'] ?? 'false') == 'true';
           _logoUrlController.text = remote['LOGO_URL'] ?? '';
           _serverHostController.text =
-              remote['SERVER_HOST'] ?? 'sparehub-0t47.onrender.com';
+              remote['SERVER_HOST'] ?? 'partsmitra.onrender.com';
           _googleClientIdController.text = remote['GOOGLE_CLIENT_ID'] ?? '';
           _resetPasswordPathController.text =
               remote['RESET_PASSWORD_PATH'] ?? '/auth/reset-password';
