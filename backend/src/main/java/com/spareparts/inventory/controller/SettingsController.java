@@ -22,7 +22,7 @@ public class SettingsController {
     @GetMapping("/public")
     public ResponseEntity<List<SystemSetting>> getPublicSettings() {
         return ResponseEntity.ok(systemSettingRepository.findAll().stream()
-                .filter(s -> s.getSettingKey().startsWith("ALLOWED_") || s.getSettingKey().equals("COMPANY_NAME"))
+                .filter(s -> s.getSettingKey().startsWith("ALLOWED_") || s.getSettingKey().equals("COMPANY_NAME") || s.getSettingKey().equals("LOGO_URL"))
                 .toList());
     }
 

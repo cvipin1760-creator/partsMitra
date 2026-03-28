@@ -58,7 +58,7 @@ const setFavicon = (href: string) => {
   }
 
   try {
-    const res = await api.get('admin/settings')
+    const res = await api.get('settings/public')
     const settings: Array<{ settingKey: string; settingValue: string }> = res.data || []
     const logo = settings.find(s => s.settingKey === 'LOGO_URL')?.settingValue?.trim()
     if (logo && (logo.startsWith('http') || logo.startsWith('/'))) {
