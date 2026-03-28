@@ -585,141 +585,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 }
 
-class AdminUserOrdersDetailScreen extends StatelessWidget {
-  final int customerId;
-  final String customerName;
-  final List<Order> orders;
-  final User? user;
-  final Function(int, String) onUpdateStatus;
-  final Function(Order) onEditOrder;
-  final Function(int) onDeleteOrder;
-
-  const AdminUserOrdersDetailScreen({
-    super.key,
-    required this.customerId,
-    required this.customerName,
-    required this.orders,
-    this.user,
-    required this.onUpdateStatus,
-    required this.onEditOrder,
-    required this.onDeleteOrder,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('$customerName\'s Orders'),
-        backgroundColor: Colors.redAccent,
-        foregroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          if (user != null)
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.red.withOpacity(0.05),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundImage: user!.shopImagePath != null
-                        ? getImageProvider(user!.shopImagePath!)
-                        : null,
-                    child: user!.shopImagePath == null
-                        ? const Icon(Icons.storefront)
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user!.name ?? customerName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          user!.address ?? 'No address provided',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              itemCount: orders.length,
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ExpansionTile(
-                    title: Text('Order #${order.id}',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Status: ${order.status}',
-                        style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontWeight: FontWeight.w600)),
-                    children: [
-                      const Divider(),
-                      ...order.items.map((item) => ListTile(
-                            title: Text(item.productName),
-                            subtitle: Text('Qty: ${item.quantity}'),
-                            trailing: Text('₹${item.price * item.quantity}'),
-                          )),
-                      const Divider(),
-                      Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            if (order.status == 'PENDING')
-                              ElevatedButton(
-                                onPressed: () =>
-                                    onUpdateStatus(order.id, 'APPROVED'),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    foregroundColor: Colors.white),
-                                child: const Text('Approve'),
-                              ),
-                            ElevatedButton.icon(
-                              onPressed: () => onEditOrder(order),
-                              icon: const Icon(Icons.edit, size: 16),
-                              label: const Text('Edit'),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () => onDeleteOrder(order.id),
-                              icon: const Icon(Icons.delete, size: 16),
-                              label: const Text('Delete'),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class AdminOverviewScreen extends StatefulWidget {
   const AdminOverviewScreen({super.key});
 
@@ -1955,42 +1820,51 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
                 children: [
                   const Icon(Icons.person, color: Colors.redAccent),
                   const SizedBox(width: 8),
-                  Text(
-                    customerName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                  Expanded(
+                    child: Text(
+                      customerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Chip(
-                    label: Text(
-                      '${customerOrders.length} Orders',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    backgroundColor: Colors.red.shade50,
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: _collapsedCustomerIds.contains(id)
-                        ? 'Expand'
-                        : 'Collapse',
-                    icon: Icon(
-                      _collapsedCustomerIds.contains(id)
-                          ? Icons.unfold_more
-                          : Icons.unfold_less,
-                      color: Colors.redAccent,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        if (_collapsedCustomerIds.contains(id)) {
-                          _collapsedCustomerIds.remove(id);
-                        } else {
-                          _collapsedCustomerIds.add(id);
-                        }
-                      });
-                    },
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Chip(
+                        label: Text(
+                          '${customerOrders.length} Orders',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        backgroundColor: Colors.red.shade50,
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: _collapsedCustomerIds.contains(id)
+                            ? 'Expand'
+                            : 'Collapse',
+                        icon: Icon(
+                          _collapsedCustomerIds.contains(id)
+                              ? Icons.unfold_more
+                              : Icons.unfold_less,
+                          color: Colors.redAccent,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (_collapsedCustomerIds.contains(id)) {
+                              _collapsedCustomerIds.remove(id);
+                            } else {
+                              _collapsedCustomerIds.add(id);
+                            }
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -2176,6 +2050,141 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class AdminUserOrdersDetailScreen extends StatelessWidget {
+  final int customerId;
+  final String customerName;
+  final List<Order> orders;
+  final User? user;
+  final Function(int, String) onUpdateStatus;
+  final Function(Order) onEditOrder;
+  final Function(int) onDeleteOrder;
+
+  const AdminUserOrdersDetailScreen({
+    super.key,
+    required this.customerId,
+    required this.customerName,
+    required this.orders,
+    this.user,
+    required this.onUpdateStatus,
+    required this.onEditOrder,
+    required this.onDeleteOrder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('$customerName\'s Orders'),
+        backgroundColor: Colors.redAccent,
+        foregroundColor: Colors.white,
+      ),
+      body: Column(
+        children: [
+          if (user != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.red.withOpacity(0.05),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage: user!.shopImagePath != null
+                        ? getImageProvider(user!.shopImagePath!)
+                        : null,
+                    child: user!.shopImagePath == null
+                        ? const Icon(Icons.storefront)
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user!.name ?? customerName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          user!.address ?? 'No address provided',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(8),
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ExpansionTile(
+                    title: Text('Order #${order.id}',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('Status: ${order.status}',
+                        style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.w600)),
+                    children: [
+                      const Divider(),
+                      ...order.items.map((item) => ListTile(
+                            title: Text(item.productName),
+                            subtitle: Text('Qty: ${item.quantity}'),
+                            trailing: Text('₹${item.price * item.quantity}'),
+                          )),
+                      const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (order.status == 'PENDING')
+                              ElevatedButton(
+                                onPressed: () =>
+                                    onUpdateStatus(order.id, 'APPROVED'),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white),
+                                child: const Text('Approve'),
+                              ),
+                            ElevatedButton.icon(
+                              onPressed: () => onEditOrder(order),
+                              icon: const Icon(Icons.edit, size: 16),
+                              label: const Text('Edit'),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () => onDeleteOrder(order.id),
+                              icon: const Icon(Icons.delete, size: 16),
+                              label: const Text('Delete'),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

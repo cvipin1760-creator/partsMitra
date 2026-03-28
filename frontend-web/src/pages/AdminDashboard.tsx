@@ -134,7 +134,7 @@ const AdminDashboard = () => {
   };
 
   const removeProductFromBill = (productId: number) => {
-    setBillingItems(billingItems.filter(i => i.id !== productId));
+    setBillingItems((billingItems || []).filter(i => i.id !== productId));
   };
 
   const updateBillQuantity = (productId: number, qty: number) => {
@@ -146,9 +146,9 @@ const AdminDashboard = () => {
   };
 
   const generateInvoice = async () => {
-    if (!billingUser || billingItems.length === 0) return;
+    if (!billingUser || (billingItems || []).length === 0) return;
     try {
-      const subtotal = billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0);
+      const subtotal = (billingItems || []).reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0);
       const calculatedDiscount = billingDiscountType === '%' 
         ? (subtotal * (billingDiscount / 100)) 
         : billingDiscount;
@@ -185,7 +185,7 @@ const AdminDashboard = () => {
         setBillingSearchResults(res.data.content || []);
       } catch (err) {
         console.error('Invoicing search error:', err);
-        const results = products.filter(p => 
+        const results = (products || []).filter(p => 
           p.name.toLowerCase().includes(term.toLowerCase()) || 
           p.partNumber.toLowerCase().includes(term.toLowerCase())
         );
@@ -537,7 +537,7 @@ const AdminDashboard = () => {
   };
 
   const getGroupedOrders = () => {
-    const grouped = orders.reduce((acc: any, order) => {
+    const grouped = (orders || []).reduce((acc: any, order) => {
       const name = order.customerName || 'Unknown User';
       if (!acc[name]) acc[name] = [];
       acc[name].push(order);
@@ -915,7 +915,7 @@ const AdminDashboard = () => {
 
   // Group orders by customer name for list/grid views
   const groupedOrdersMap: Record<string, any[]> = useMemo(() => {
-    return orders.reduce((acc: Record<string, any[]>, order: any) => {
+    return (orders || []).reduce((acc: Record<string, any[]>, order: any) => {
       const key = order.customerName || `User ${order.customerId}`;
       if (!acc[key]) acc[key] = [];
       acc[key].push(order);
@@ -958,7 +958,7 @@ const AdminDashboard = () => {
               onChange={e => setSelectedExcelCategory(e.target.value)}
             >
               <option value="">Auto (AI)</option>
-              {categories.map((c: any) => (
+              {(categories || []).map((c: any) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
@@ -1042,7 +1042,7 @@ const AdminDashboard = () => {
           </div>
           <div>
             <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</p>
-            <p className="text-2xl font-black text-gray-900">₹{(salesReport?.totalSales ?? orders.reduce((acc, o) => acc + o.totalAmount, 0)).toLocaleString()}</p>
+            <p className="text-2xl font-black text-gray-900">₹{(salesReport?.totalSales ?? (orders || []).reduce((acc, o) => acc + (o.totalAmount || 0), 0)).toLocaleString()}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
@@ -1169,7 +1169,7 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase">
               <Users size={16} />
-              <span>{users.filter(u =>
+              <span>{(users || []).filter(u =>
                 u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
                 u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
                 (u.role?.name || u.role).toLowerCase().includes(userSearchTerm.toLowerCase())
@@ -1188,7 +1188,7 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {users.filter(u =>
+                {(users || []).filter(u =>
                   u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
                   u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
                   (u.role?.name || u.role).toLowerCase().includes(userSearchTerm.toLowerCase())
@@ -1281,7 +1281,7 @@ const AdminDashboard = () => {
           </div>
 
           <div className="md:hidden space-y-4">
-            {users.filter(u =>
+            {(users || []).filter(u =>
               u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
               u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
               (u.role?.name || u.role).toLowerCase().includes(userSearchTerm.toLowerCase())
@@ -1764,7 +1764,7 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {orders
+              {(orders || [])
                 .filter(o => o.status === 'OUT_FOR_DELIVERY' || o.status === 'DELIVERED')
                 .map((order) => (
                 <tr key={order.id}>
@@ -1792,7 +1792,7 @@ const AdminDashboard = () => {
                   </td>
                 </tr>
               ))}
-              {orders.filter(o => o.status === 'OUT_FOR_DELIVERY' || o.status === 'DELIVERED').length === 0 && (
+              {(orders || []).filter(o => o.status === 'OUT_FOR_DELIVERY' || o.status === 'DELIVERED').length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-6 py-10 text-center text-gray-500">No active or completed deliveries found.</td>
                     </tr>
@@ -1822,7 +1822,7 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {deletedUsers.length > 0 ? deletedUsers.map((user) => (
+                  {(deletedUsers || []).length > 0 ? (deletedUsers || []).map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-bold text-gray-900">{user.name}</div>
@@ -1887,7 +1887,7 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {deletedProducts.length > 0 ? deletedProducts.map((product) => (
+                  {(deletedProducts || []).length > 0 ? (deletedProducts || []).map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50/50 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-bold text-gray-900">{product.name}</div>
@@ -1943,7 +1943,7 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {deletedOrders.length > 0 ? deletedOrders.map((order) => (
+                  {(deletedOrders || []).length > 0 ? (deletedOrders || []).map((order) => (
                     <tr key={order.id} className="hover:bg-gray-50/50 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-xs font-black text-primary-700 bg-primary-50 px-2 py-1 rounded-md">#{order.id}</span>
@@ -2017,10 +2017,10 @@ const AdminDashboard = () => {
                   id="customer-select"
                   className="w-full border border-gray-200 rounded-xl p-3 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
                   value={billingUser?.id || ''}
-                  onChange={(e) => setBillingUser(users.find(u => u.id === parseInt(e.target.value)))}
+                  onChange={(e) => setBillingUser((users || []).find(u => u.id === parseInt(e.target.value)))}
                 >
                   <option value="">Choose a customer...</option>
-                  {users.map(u => (
+                  {(users || []).map(u => (
                     <option key={u.id} value={u.id}>{u.name} ({u.roles?.join(', ') || 'User'})</option>
                   ))}
                 </select>
@@ -2044,9 +2044,9 @@ const AdminDashboard = () => {
                       }
                     }}
                   />
-                  {billingSearchResults.length > 0 && (
+                  {(billingSearchResults || []).length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-10 overflow-hidden">
-                      {billingSearchResults.map(p => (
+                      {(billingSearchResults || []).map(p => (
                         <div 
                           key={p.id} 
                           className="p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center border-b border-gray-50 last:border-0"
@@ -2087,7 +2087,7 @@ const AdminDashboard = () => {
             )}
             
             <div className="flex-1 overflow-y-auto">
-              {billingItems.length === 0 ? (
+              {(billingItems || []).length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-400">
                   <ShoppingBag size={48} className="mb-2 opacity-20" />
                   <p className="font-bold">No items added yet</p>
@@ -2103,7 +2103,7 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {billingItems.map(item => (
+                    {(billingItems || []).map(item => (
                       <tr key={item.id}>
                         <td className="py-3">
                           <div className="font-bold text-sm text-gray-900">{item.name}</div>
@@ -2132,7 +2132,7 @@ const AdminDashboard = () => {
             <div className="mt-6 border-t border-gray-100 pt-6 space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">Subtotal</span>
-                <span className="text-lg font-bold text-gray-700">₹{billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0).toFixed(2)}</span>
+                <span className="text-lg font-bold text-gray-700">₹{(billingItems || []).reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0).toFixed(2)}</span>
               </div>
               
               <div className="flex flex-col gap-2 bg-orange-50 p-3 rounded-xl border border-orange-100">
@@ -2167,7 +2167,7 @@ const AdminDashboard = () => {
                 </div>
                 {billingDiscountType === '%' && billingDiscount > 0 && (
                   <div className="text-[10px] text-right text-orange-400 font-bold">
-                    ≈ ₹{(billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0) * (billingDiscount / 100)).toFixed(2)} off
+                    ≈ ₹{((billingItems || []).reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0) * (billingDiscount / 100)).toFixed(2)} off
                   </div>
                 )}
               </div>
@@ -2175,11 +2175,11 @@ const AdminDashboard = () => {
               <div className="flex justify-between items-center mb-4">
                 <span className="text-gray-500 font-black uppercase tracking-widest text-xs">Total Payable</span>
                 <span className="text-2xl font-black text-primary-600">
-                  ₹{Math.max(0, billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0) - (billingDiscountType === '%' ? (billingItems.reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0) * (billingDiscount / 100)) : billingDiscount)).toFixed(2)}
+                  ₹{Math.max(0, (billingItems || []).reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0) - (billingDiscountType === '%' ? ((billingItems || []).reduce((acc, i) => acc + (i.sellingPrice * i.quantity), 0) * (billingDiscount / 100)) : billingDiscount)).toFixed(2)}
                 </span>
               </div>
               <button
-                disabled={!billingUser || billingItems.length === 0}
+                disabled={!billingUser || (billingItems || []).length === 0}
                 onClick={generateInvoice}
                 className="w-full bg-primary-600 text-white py-4 rounded-xl font-black shadow-lg shadow-primary-100 hover:bg-primary-700 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
               >
@@ -2211,7 +2211,7 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {orderRequests.map((req) => (
+                {(orderRequests || []).map((req) => (
                   <tr key={req.id} className="hover:bg-gray-50/50 transition">
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-gray-900">{req.text}</div>
@@ -2236,7 +2236,7 @@ const AdminDashboard = () => {
                         className="text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg p-1"
                       >
                         <option value="">Unassigned</option>
-                        {users.filter(u => (u.role?.name || u.role) === ROLE_STAFF).map(s => (
+                        {(users || []).filter(u => (u.role?.name || u.role) === ROLE_STAFF).map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                       </select>
@@ -2266,13 +2266,13 @@ const AdminDashboard = () => {
             {/* You could fetch other periods here, but for now we reuse the report state */}
             <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-2xl text-white shadow-lg shadow-indigo-100">
               <h3 className="text-lg font-bold mb-2">Active Inventory</h3>
-              <div className="text-3xl font-black mb-1">{products.length}</div>
-              <div className="text-sm opacity-80">{products.filter(p => p.stock <= 5).length} Low Stock Items</div>
+              <div className="text-3xl font-black mb-1">{(products || []).length}</div>
+              <div className="text-sm opacity-80">{(products || []).filter(p => p.stock <= 5).length} Low Stock Items</div>
             </div>
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white shadow-lg shadow-purple-100">
               <h3 className="text-lg font-bold mb-2">User Growth</h3>
-              <div className="text-3xl font-black mb-1">{users.length}</div>
-              <div className="text-sm opacity-80">{users.filter(u => u.status === 'PENDING').length} Pending Approvals</div>
+              <div className="text-3xl font-black mb-1">{(users || []).length}</div>
+              <div className="text-sm opacity-80">{(users || []).filter(u => u.status === 'PENDING').length} Pending Approvals</div>
             </div>
           </div>
           
@@ -2298,10 +2298,10 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase">
               <Star size={16} className="text-amber-500" />
-              <span>{users.filter(u => 
+              <span>{(users || []).filter(u => 
                 (u.name.toLowerCase().includes(cashbackSearchTerm.toLowerCase()) || 
                  u.email.toLowerCase().includes(cashbackSearchTerm.toLowerCase())) &&
-                (u.points > 0 || orders.some(o => o.customerId === u.id && (o.pointsEarned > 0 || o.pointsRedeemed > 0)))
+                (u.points > 0 || (orders || []).some(o => o.customerId === u.id && (o.pointsEarned > 0 || o.pointsRedeemed > 0)))
               ).length} Users with Point Activity</span>
             </div>
           </div>
@@ -2316,11 +2316,11 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {users.filter(u => 
+                {(users || []).filter(u => 
                   u.name.toLowerCase().includes(cashbackSearchTerm.toLowerCase()) || 
                   u.email.toLowerCase().includes(cashbackSearchTerm.toLowerCase())
                 ).map((user) => {
-                  const userOrders = orders.filter(o => o.customerId === user.id && (o.pointsEarned > 0 || o.pointsRedeemed > 0));
+                  const userOrders = (orders || []).filter(o => o.customerId === user.id && (o.pointsEarned > 0 || o.pointsRedeemed > 0));
                   return (
                     <React.Fragment key={user.id}>
                       <tr className="hover:bg-gray-50/50 transition">
@@ -2399,7 +2399,7 @@ const AdminDashboard = () => {
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category: any) => (
+            {(categories || []).map((category: any) => (
               <div key={category.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-shadow cursor-default">
                 <div className="h-40 bg-gray-50 relative overflow-hidden">
                   {category.imageLink || category.imagePath ? (
@@ -3139,14 +3139,14 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {editingOrder.items.map((item: any, idx: number) => (
+                  {(editingOrder?.items || []).map((item: any, idx: number) => (
                     <tr key={idx}>
                       <td className="py-2">{tp(item.productName)}</td>
                       <td className="py-2 text-center">
                         <div className="flex items-center justify-center space-x-2">
                           <button
                             onClick={() => {
-                              const newItems = [...editingOrder.items];
+                              const newItems = [...(editingOrder?.items || [])];
                               if (newItems[idx].quantity > 1) {
                                 newItems[idx].quantity--;
                                 setEditingOrder({ ...editingOrder, items: newItems });
@@ -3157,7 +3157,7 @@ const AdminDashboard = () => {
                           <span>{item.quantity}</span>
                           <button
                             onClick={() => {
-                              const newItems = [...editingOrder.items];
+                              const newItems = [...(editingOrder?.items || [])];
                               newItems[idx].quantity++;
                               setEditingOrder({ ...editingOrder, items: newItems });
                             }}
@@ -3169,7 +3169,7 @@ const AdminDashboard = () => {
                       <td className="py-2 text-right">
                         <button
                           onClick={() => {
-                            const newItems = editingOrder.items.filter((_: any, i: number) => i !== idx);
+                            const newItems = (editingOrder?.items || []).filter((_: any, i: number) => i !== idx);
                             setEditingOrder({ ...editingOrder, items: newItems });
                           }}
                           className="text-red-600"
@@ -3182,7 +3182,7 @@ const AdminDashboard = () => {
             </div>
             <div className="flex justify-between items-center border-t pt-4">
               <p className="text-lg font-bold">
-                Total: ₹{editingOrder.items.reduce((acc: any, item: any) => acc + (item.price * item.quantity), 0).toFixed(2)}
+                Total: ₹{(editingOrder?.items || []).reduce((acc: any, item: any) => acc + (item.price * item.quantity), 0).toFixed(2)}
               </p>
               <div className="flex space-x-3">
                 <button

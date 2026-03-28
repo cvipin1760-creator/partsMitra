@@ -170,7 +170,7 @@ const WholesalerDashboard = () => {
           </div>
           <div>
             <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Pending Orders</p>
-            <p className="text-2xl font-black text-gray-900">{orders.filter(o => o.status === 'PENDING').length}</p>
+            <p className="text-2xl font-black text-gray-900">{(orders || []).filter(o => o.status === 'PENDING').length}</p>
           </div>
         </div>
       </div>
@@ -213,8 +213,8 @@ const WholesalerDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                  {products.map((product) => (
-                    <tr key={product.id} className="hover:bg-gray-50/50 transition">
+                {(products || []).map((product) => (
+                  <tr key={product.id} className="hover:bg-gray-50/50 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           {product.imagePath || product.imageLink || product.categoryImageLink || product.categoryImagePath ? (
@@ -259,7 +259,7 @@ const WholesalerDashboard = () => {
           </div>
 
           <div className="md:hidden space-y-4">
-            {products.map((product) => (
+            {(products || []).map((product) => (
               <div key={product.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -317,7 +317,7 @@ const WholesalerDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {orders.map((order) => (
+                {(orders || []).map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50/50 transition">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-xs font-black text-primary-700 bg-primary-50 px-2 py-1 rounded-md">#{order.id}</span>
@@ -360,7 +360,7 @@ const WholesalerDashboard = () => {
           </div>
 
           <div className="md:hidden space-y-4">
-            {orders.map((order) => (
+            {(orders || []).map((order) => (
               <div key={order.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -421,7 +421,7 @@ const WholesalerDashboard = () => {
                 onChange={e => setSelectedCategoryId(e.target.value)}
               >
                 <option value="">Auto-categorize (by AI)</option>
-                {categories.map((c: any) => (
+                {(categories || []).map((c: any) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>

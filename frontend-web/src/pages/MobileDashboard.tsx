@@ -54,8 +54,8 @@ const MobileDashboard = () => {
         api.get('/admin/sales', { params: { type: period } })
       ]);
 
-      const orders = ordersRes.data;
-      const totalRevenue = (salesRes.data?.totalSales ?? orders.reduce((acc: number, o: any) => acc + o.totalAmount, 0));
+      const orders = ordersRes.data || [];
+      const totalRevenue = (salesRes.data?.totalSales ?? orders.reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0));
       const pendingOrders = orders.filter((o: any) => o.status === 'PENDING').length;
       
       setStats({
@@ -192,7 +192,7 @@ const MobileDashboard = () => {
             <option value="MONTHLY">Monthly</option>
           </select>
         </div>
-        <div className="h-64 w-full">
+        <div className="h-64 w-full" style={{ minHeight: '256px' }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <AreaChart data={chartData}>
               <defs>
@@ -234,7 +234,7 @@ const MobileDashboard = () => {
           <button className="text-xs font-bold text-primary-600 uppercase tracking-widest hover:underline">View All</button>
         </div>
         <div className="space-y-4">
-          {recentOrders.map((order) => (
+          {(recentOrders || []).map((order) => (
             <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl hover:bg-gray-50 transition group cursor-pointer">
               <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-xl ${

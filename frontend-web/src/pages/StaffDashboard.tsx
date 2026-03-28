@@ -49,13 +49,13 @@ const StaffDashboard = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => 
+  const filteredOrders = (orders || []).filter(order => 
     order.id.toString().includes(searchTerm) || 
     order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.deliveredByName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = (users || []).filter(user => 
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -87,7 +87,7 @@ const StaffDashboard = () => {
           </div>
           <div>
             <p className="text-gray-500 text-sm">Active Orders</p>
-            <p className="text-2xl font-bold">{orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length}</p>
+            <p className="text-2xl font-bold">{(orders || []).filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
@@ -96,7 +96,7 @@ const StaffDashboard = () => {
           </div>
           <div>
             <p className="text-gray-500 text-sm">Total Users</p>
-            <p className="text-2xl font-bold">{users.length}</p>
+            <p className="text-2xl font-bold">{(users || []).length}</p>
           </div>
         </div>
       </div>
