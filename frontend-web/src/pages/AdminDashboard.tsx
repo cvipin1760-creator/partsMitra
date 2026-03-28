@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api, { API_BASE_URL } from '../services/api';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
@@ -914,12 +914,14 @@ const AdminDashboard = () => {
   );
 
   // Group orders by customer name for list/grid views
-  const groupedOrders: Record<string, any[]> = orders.reduce((acc: Record<string, any[]>, order: any) => {
-    const key = order.customerName || `User ${order.customerId}`;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(order);
-    return acc;
-  }, {});
+  const groupedOrdersMap: Record<string, any[]> = useMemo(() => {
+    return orders.reduce((acc: Record<string, any[]>, order: any) => {
+      const key = order.customerName || `User ${order.customerId}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(order);
+      return acc;
+    }, {});
+  }, [orders]);
 
   return (
     <div className={`container mx-auto p-4 md:p-6 ${isSuperManager ? 'bg-purple-50 min-h-screen' : ''}`}>
@@ -1381,10 +1383,10 @@ const AdminDashboard = () => {
 
           {orderListView === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Object.keys(groupedOrders)
+              {Object.keys(groupedOrdersMap)
                 .filter(name => name.toLowerCase().includes(orderQuery.toLowerCase()))
                 .map((userName) => {
-                  const userOrders = groupedOrders[userName];
+                  const userOrders = groupedOrdersMap[userName];
                   const firstOrder = userOrders[0];
                   // Try to find the user in our users list to get their shop image
                   const user = users.find(u => u.name === userName || u.id === firstOrder.customerId);
@@ -1428,7 +1430,7 @@ const AdminDashboard = () => {
             </div>
           ) : (
             <div className="space-y-8">
-              {Object.keys(groupedOrders)
+              {Object.keys(groupedOrdersMap)
                 .filter(name => name.toLowerCase().includes(orderQuery.toLowerCase()))
                 .map((userName) => (
                 <div key={userName} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -1438,7 +1440,7 @@ const AdminDashboard = () => {
                       Orders for {userName}
                     </h3>
                     <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-100">
-                      {groupedOrders[userName].length} Orders
+                      {groupedOrdersMap[userName].length} Orders
                     </span>
                   </div>
                   <div className="overflow-x-auto">
@@ -1452,7 +1454,7 @@ const AdminDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {groupedOrders[userName].map((order: any) => (
+                        {groupedOrdersMap[userName].map((order: any) => (
                           <tr key={order.id} className="hover:bg-gray-50/50 transition">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="text-xs font-black text-primary-700 bg-primary-50 px-2 py-1 rounded-md">#{order.id}</span>
